@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="270"
+                android:startColor="@color/gray"
+                android:endColor="@color/black"/>
+        </shape>
+    </item>
+    <item
+        android:drawable="@drawable/logo_calypso"
+        android:gravity="center"
+        android:drawableTint="@color/calypso_red"
+        android:drawableTintMode="src_in"/>
+</layer-list>

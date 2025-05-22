@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">Calypso</string>
+    <string name="calypso_logo">Calypso Logo</string>
+    <string name="sign_up_free">Sign up free</string>
+    <string name="continue_with_google">Continue with Google</string>
+    <string name="log_in">Log In</string>
+    <string name="sports_streaming">Sports Streaming</string>
+    <string name="password">Password</string>
+    <string name="confirm_password">Confirm Password</string>
+    <string name="register">Register</string>
+</resources>

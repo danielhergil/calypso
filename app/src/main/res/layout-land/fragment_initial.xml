@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_splash_gradient"
+    android:padding="24dp">
+
+    <!-- LEFT COLUMN: Logo + texts -->
+    <LinearLayout
+        android:id="@+id/leftCol"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:layout_marginBottom="46dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintWidth_percent="0.5">
+
+        <ImageView
+            android:id="@+id/imgLogo"
+            android:layout_width="120dp"
+            android:layout_height="120dp"
+            android:src="@drawable/logo_calypso"
+            android:layout_marginBottom="36dp"
+            app:tint="@color/calypso_red" />
+
+        <TextView
+            android:id="@+id/tvTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/app_name"
+            android:textSize="32sp"
+            android:textStyle="bold"
+            android:textColor="@android:color/white"
+            android:fontFamily="@font/roboto_medium"
+            android:letterSpacing="0"
+            android:layout_marginBottom="8dp"/>
+
+        <TextView
+            android:id="@+id/tvSubtitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/sports_streaming"
+            android:textSize="18sp"
+            android:textColor="@android:color/white"
+            android:fontFamily="@font/roboto_medium"/>
+
+    </LinearLayout>
+
+    <!-- RIGHT COLUMN: Buttons -->
+    <LinearLayout
+        android:id="@+id/rightCol"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintWidth_percent="0.5">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSignUp"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="250dp"
+            android:layout_height="56dp"
+            android:text="@string/sign_up_free"
+            android:textAllCaps="false"
+            android:textColor="@android:color/black"
+            android:fontFamily="@font/roboto_medium"
+            android:letterSpacing="0"
+            android:textSize="16sp"
+            app:backgroundTint="@color/calypso_red"
+            app:cornerRadius="24dp"
+            android:layout_marginBottom="16dp"/>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnGoogle"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="250dp"
+            android:layout_height="56dp"
+            android:text="@string/continue_with_google"
+            android:textAllCaps="false"
+            android:textColor="@android:color/white"
+            android:fontFamily="@font/roboto_medium"
+            android:letterSpacing="0"
+            android:textSize="16sp"
+            app:icon="@drawable/google_icon"
+            app:iconSize="24dp"
+            app:iconPadding="8dp"
+            app:iconTint="@null"
+            app:strokeColor="@android:color/white"
+            app:strokeWidth="2dp"
+            app:cornerRadius="24dp"
+            android:layout_marginBottom="24dp"/>
+
+        <TextView
+            android:id="@+id/tvLogin"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/log_in"
+            android:textSize="16sp"
+            android:textColor="@android:color/white"
+            android:fontFamily="@font/roboto_medium"
+            android:letterSpacing="0"
+            android:textStyle="bold"
+            android:clickable="true"
+            android:focusable="true"/>
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
