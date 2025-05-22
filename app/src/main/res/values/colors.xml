@@ -7,6 +7,7 @@
 
     <!-- Shared accents -->
     <color name="gray">#393939</color>
+    <color name="dark_gray">#212020</color>
     <color name="black">#121212</color>
     <color name="calypso_red">#CE5050</color>
     <color name="green">#49DD63</color>

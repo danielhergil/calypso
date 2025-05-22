@@ -1,4 +1,4 @@
-package com.danihg.calypso.ui
+package com.danihg.calypso.ui.start
 
 import android.os.Bundle
 import android.view.View

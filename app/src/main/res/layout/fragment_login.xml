@@ -3,6 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
+
     <ScrollView
         android:fillViewport="true"
         android:background="@color/gray"
@@ -45,7 +46,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/password"
+                android:text="Password"
                 android:textColor="@android:color/white"
                 android:layout_marginTop="24dp" />
 
@@ -76,54 +77,32 @@
                     app:tint="@android:color/white" />
             </LinearLayout>
 
-            <!-- Confirm Password -->
-            <TextView
+            <!-- Remember Me Checkbox -->
+            <CheckBox
+                android:id="@+id/cbRemember"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/confirm_password"
+                android:text="Remember me"
                 android:textColor="@android:color/white"
-                android:layout_marginTop="24dp"/>
-            <LinearLayout
-                android:orientation="horizontal"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center_vertical">
+                android:layout_marginTop="16dp" />
 
-                <EditText
-                    android:id="@+id/etConfirm"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:backgroundTint="@android:color/white"
-                    android:textColor="@android:color/white"
-                    android:inputType="textPassword"/>
-
-                <ImageButton
-                    android:id="@+id/btnToggleConfirm"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:paddingBottom="20dp"
-                    android:src="@drawable/ic_visibility"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="Show or hide password"
-                    app:tint="@android:color/white" />
-            </LinearLayout>
-
-            <!-- Register -->
+            <!-- Login Button -->
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnRegister"
+                android:id="@+id/btnLogin"
                 style="@style/Widget.MaterialComponents.Button"
                 android:layout_width="match_parent"
                 android:layout_height="56dp"
                 android:layout_marginTop="32dp"
-                android:text="@string/register"
+                android:text="Log In"
                 android:textAllCaps="false"
                 android:textColor="@android:color/black"
                 app:backgroundTint="@color/calypso_red"
-                app:cornerRadius="28dp"/>
+                app:cornerRadius="28dp" />
 
         </LinearLayout>
     </ScrollView>
+
+    <!-- Blurred overlay and spinner (optional) -->
     <View
         android:id="@+id/blurOverlay"
         android:layout_width="match_parent"
@@ -132,7 +111,6 @@
         android:alpha="0.7"
         android:visibility="gone" />
 
-    <!-- Progress spinner in calypso red -->
     <ProgressBar
         android:id="@+id/progressOverlay"
         style="@android:style/Widget.Material.ProgressBar.Large"

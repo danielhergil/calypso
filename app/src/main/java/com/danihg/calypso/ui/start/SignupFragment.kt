@@ -1,4 +1,4 @@
-package com.danihg.calypso.ui
+package com.danihg.calypso.ui.start
 
 import android.os.Bundle
 import android.text.InputType
@@ -8,18 +8,23 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.fragment.app.Fragment
+import androidx.navigation.fragment.findNavController
 import com.danihg.calypso.R
 import com.danihg.calypso.databinding.FragmentSignUpBinding
+import com.google.firebase.auth.FirebaseAuth
 
 class SignupFragment : Fragment() {
     private var _binding: FragmentSignUpBinding? = null
     private val binding get() = _binding!!
+    private lateinit var auth: FirebaseAuth
 
     private var passwordVisible = false
     private var confirmVisible = false
 
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
     ): View {
         _binding = FragmentSignUpBinding.inflate(inflater, container, false)
         return binding.root
@@ -27,6 +32,7 @@ class SignupFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        auth = FirebaseAuth.getInstance()
 
         // Toggle password visibility
         binding.btnTogglePassword.setOnClickListener {
@@ -79,11 +85,44 @@ class SignupFragment : Fragment() {
             }
 
             if (valid) {
-                // TODO: FirebaseAuth.createUserWithEmailAndPassword(email, pass)...
+                showLoading(true)
+                // Check if user already exists
+                auth.fetchSignInMethodsForEmail(email)
+                    .addOnCompleteListener { task ->
+                        if (task.isSuccessful) {
+                            val methods = task.result?.signInMethods
+                            if (!methods.isNullOrEmpty()) {
+                                // User exists
+                                binding.etEmail.error = "Email already in use"
+                                Toast.makeText(requireContext(), "Email already registered", Toast.LENGTH_SHORT).show()
+                                showLoading(false)
+                            } else {
+                                // Register new user
+                                auth.createUserWithEmailAndPassword(email, pass)
+                                    .addOnCompleteListener { createTask ->
+                                        showLoading(false)
+                                        if (createTask.isSuccessful) {
+                                            Toast.makeText(requireContext(), "Registration successful", Toast.LENGTH_SHORT).show()
+                                            findNavController().navigate(R.id.action_signUp_to_initial)
+                                        } else {
+                                            Toast.makeText(requireContext(), createTask.exception?.localizedMessage ?: "Registration failed", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                            }
+                        } else {
+                            showLoading(false)
+                            Toast.makeText(requireContext(), "Error checking email existence", Toast.LENGTH_SHORT).show()
+                        }
+                    }
             } else {
                 Toast.makeText(requireContext(), "Please fix errors", Toast.LENGTH_SHORT).show()
             }
         }
+    }
+
+    private fun showLoading(show: Boolean) {
+        binding.blurOverlay.visibility = if (show) View.VISIBLE else View.GONE
+        binding.progressOverlay.visibility = if (show) View.VISIBLE else View.GONE
     }
 
     override fun onDestroyView() {
