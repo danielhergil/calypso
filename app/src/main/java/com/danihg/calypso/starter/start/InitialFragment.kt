@@ -1,5 +1,5 @@
 // src/main/java/com/danihg/calypso/ui/InitialFragment.kt
-package com.danihg.calypso.ui.start
+package com.danihg.calypso.starter.start
 
 import android.Manifest
 import android.app.Activity

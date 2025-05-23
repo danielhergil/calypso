@@ -1,4 +1,4 @@
-package com.danihg.calypso.ui.home
+package com.danihg.calypso.starter.home
 
 import android.content.Intent
 import android.os.Bundle

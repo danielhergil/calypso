@@ -7,7 +7,7 @@
 
     <fragment
         android:id="@+id/splashFragment"
-        android:name="com.danihg.calypso.ui.start.SplashFragment"
+        android:name="com.danihg.calypso.starter.start.SplashFragment"
         android:label="Splash">
         <action
             android:id="@+id/action_splash_to_initial"
@@ -18,7 +18,7 @@
 
     <fragment
         android:id="@+id/initialFragment"
-        android:name="com.danihg.calypso.ui.start.InitialFragment"
+        android:name="com.danihg.calypso.starter.start.InitialFragment"
         android:label="Initial">
         <action
             android:id="@+id/action_initial_to_signUp"
@@ -33,7 +33,7 @@
 
     <fragment
         android:id="@+id/signUpFragment"
-        android:name="com.danihg.calypso.ui.start.SignupFragment"
+        android:name="com.danihg.calypso.starter.start.SignupFragment"
         android:label="Sign Up" >
         <action
             android:id="@+id/action_signUp_to_initial"
@@ -44,7 +44,7 @@
 
     <fragment
         android:id="@+id/loginFragment"
-        android:name="com.danihg.calypso.ui.start.LoginFragment"
+        android:name="com.danihg.calypso.starter.start.LoginFragment"
         android:label="Login">
         <action
             android:id="@+id/action_login_to_home"
@@ -57,7 +57,7 @@
     <!-- Home destination -->
     <fragment
         android:id="@+id/homeFragment"
-        android:name="com.danihg.calypso.ui.home.HomeFragment"
+        android:name="com.danihg.calypso.starter.home.HomeFragment"
         android:label="Home" />
         <action
             android:id="@+id/action_home_to_teams"
