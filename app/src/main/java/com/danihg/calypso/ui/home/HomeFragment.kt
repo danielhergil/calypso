@@ -1,5 +1,6 @@
 package com.danihg.calypso.ui.home
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -7,6 +8,7 @@ import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.danihg.calypso.R
+import com.danihg.calypso.camera.CameraActivity
 import com.danihg.calypso.databinding.FragmentHomeBinding
 
 class HomeFragment : Fragment() {
@@ -25,7 +27,8 @@ class HomeFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         binding.cardCamera.setOnClickListener {
-            findNavController().navigate(R.id.action_home_to_camera)
+            val intent = Intent(requireContext(), CameraActivity::class.java)
+            startActivity(intent)
         }
         binding.cardTeams.setOnClickListener {
             findNavController().navigate(R.id.action_home_to_teams)

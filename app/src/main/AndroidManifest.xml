@@ -30,6 +30,9 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name=".camera.CameraActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Calypso.Fullscreen" />
     </application>
 
 </manifest>

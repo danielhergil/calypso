@@ -7,6 +7,16 @@
         <item name="windowActionBar">false</item>
     </style>
 
+    <!-- Fullscreen variant for CameraActivity -->
+    <style name="Theme.Calypso.Fullscreen" parent="Theme.Calypso">
+        <!-- remove the title bar -->
+        <item name="android:windowNoTitle">true</item>
+        <!-- draw behind status bar -->
+        <item name="android:windowFullscreen">true</item>
+        <!-- optional: make status bar transparent -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+    </style>
+
     <!-- Main app theme, DayNight MaterialComponents -->
     <style name="Theme.Calypso" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <!-- primary / secondary / tertiary -->
