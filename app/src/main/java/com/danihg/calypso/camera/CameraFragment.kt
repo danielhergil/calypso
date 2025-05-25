@@ -17,7 +17,7 @@ import com.pedro.common.ConnectChecker
 import com.pedro.library.generic.GenericStream
 import android.widget.Toast
 
-class CameraFragment : Fragment(R.layout.fragment_camera_preview), ConnectChecker {
+class CameraFragment : Fragment(R.layout.fragment_camera_preview) {
 
     companion object {
         /**
@@ -27,127 +27,32 @@ class CameraFragment : Fragment(R.layout.fragment_camera_preview), ConnectChecke
         fun newInstance(): CameraFragment = CameraFragment()
     }
 
-    // shared ViewModel—ready to observe any future flags
     private val cameraViewModel: CameraViewModel by activityViewModels()
-
-    // your streaming engine
-    val genericStream: GenericStream by lazy {
-        GenericStream(requireContext(), this).apply {
-            getGlInterface().autoHandleOrientation = true
-            getStreamClient().setBitrateExponentialFactor(0.5f)
-//            prepareVideo(1920, 1080, 5_000_000, rotation = 0)
-//            prepareAudio(32_000, true, 128_000)
-        }
-    }
-
-    private fun prepare() {
-        val prepared = try {
-            genericStream.prepareVideo(1920, 1080, 5_000_000)
-                    && genericStream.prepareAudio(32_000, true, 128_000)
-        } catch (e: IllegalArgumentException) {
-            false
-        }
-        if (!prepared) {
-            activity?.finish()
-        }
-    }
-
+    private val genericStream get() = cameraViewModel.genericStream
     private lateinit var surfaceView: SurfaceView
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        @Suppress("DEPRECATION")
-        retainInstance = true        // keep this fragment (and its stream) across rotations
-
-        prepare()
-        genericStream.getStreamClient().setReTries(10)
-    }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        // bind
+
         surfaceView = view.findViewById(R.id.surfaceView)
 
-        // surface preview
+        // Surface callbacks handle preview start/stop
         surfaceView.holder.addCallback(object : SurfaceHolder.Callback {
             override fun surfaceCreated(holder: SurfaceHolder) {
-                if (!genericStream.isOnPreview) genericStream.startPreview(surfaceView)
+                if (!genericStream.isOnPreview) {
+                    genericStream.startPreview(surfaceView)
+                }
             }
 
-            override fun surfaceChanged(holder: SurfaceHolder, f: Int, w: Int, h: Int) {
-                genericStream.getGlInterface().setPreviewResolution(w, h)
+            override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
+                genericStream.getGlInterface().setPreviewResolution(width, height)
             }
 
             override fun surfaceDestroyed(holder: SurfaceHolder) {
-                if (genericStream.isOnPreview) genericStream.stopPreview()
+                if (genericStream.isOnPreview) {
+                    genericStream.stopPreview()
+                }
             }
         })
-
-        // observe future flags (no-op until you set dummyFlag)
-        cameraViewModel.dummyFlag.observe(viewLifecycleOwner) { enabled ->
-            // e.g. add or remove a filter:
-            if (enabled) Log.d("CameraFragment", "Filter enabled")
-            else Log.d("CameraFragment", "Filter disabled")
-        }
     }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-    }
-
-    // Only release when the fragment is really destroyed
-    override fun onDestroy() {
-        super.onDestroy()
-        genericStream.release()
-    }
-
-    // ----- ConnectChecker callbacks -----
-    override fun onConnectionStarted(url: String) = Unit
-    override fun onConnectionSuccess() {
-        if (!isAdded) return
-        Handler(Looper.getMainLooper()).post {
-            context?.let {
-                Toast.makeText(it, "Connected", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
-    override fun onConnectionFailed(reason: String) {
-        if (!isAdded) return
-        Handler(Looper.getMainLooper()).post {
-            context?.let {
-                Toast.makeText(it, "Connection failed: $reason", Toast.LENGTH_LONG).show()
-            }
-        }
-    }
-
-    override fun onDisconnect() {
-        // skip if this Fragment is no longer added (e.g. after a rotation)
-        if (!isAdded) return
-        // post on main thread in case we’re coming from an IO / encoder thread
-        Handler(Looper.getMainLooper()).post {
-            context?.let {
-                Toast.makeText(it, "Disconnected", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
-    override fun onAuthError() {
-        if (!isAdded) return
-        Handler(Looper.getMainLooper()).post {
-            context?.let {
-                Toast.makeText(it, "Auth error", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
-    override fun onAuthSuccess() {
-        if (!isAdded) return
-        Handler(Looper.getMainLooper()).post {
-            context?.let {
-                Toast.makeText(it, "Auth success", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
 }
