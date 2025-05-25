@@ -2,6 +2,8 @@ package com.danihg.calypso.camera
 
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.SurfaceHolder
 import android.view.SurfaceView
@@ -32,12 +34,34 @@ class CameraFragment : Fragment(R.layout.fragment_camera_preview), ConnectChecke
     val genericStream: GenericStream by lazy {
         GenericStream(requireContext(), this).apply {
             getGlInterface().autoHandleOrientation = true
-            prepareVideo(1920, 1080, 5_000_000, rotation = 0)
-            prepareAudio(32_000, true, 128_000)
+            getStreamClient().setBitrateExponentialFactor(0.5f)
+//            prepareVideo(1920, 1080, 5_000_000, rotation = 0)
+//            prepareAudio(32_000, true, 128_000)
+        }
+    }
+
+    private fun prepare() {
+        val prepared = try {
+            genericStream.prepareVideo(1920, 1080, 5_000_000)
+                    && genericStream.prepareAudio(32_000, true, 128_000)
+        } catch (e: IllegalArgumentException) {
+            false
+        }
+        if (!prepared) {
+            activity?.finish()
         }
     }
 
     private lateinit var surfaceView: SurfaceView
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        @Suppress("DEPRECATION")
+        retainInstance = true        // keep this fragment (and its stream) across rotations
+
+        prepare()
+        genericStream.getStreamClient().setReTries(10)
+    }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -69,24 +93,61 @@ class CameraFragment : Fragment(R.layout.fragment_camera_preview), ConnectChecke
 
     override fun onDestroyView() {
         super.onDestroyView()
+    }
+
+    // Only release when the fragment is really destroyed
+    override fun onDestroy() {
+        super.onDestroy()
         genericStream.release()
     }
 
     // ----- ConnectChecker callbacks -----
     override fun onConnectionStarted(url: String) = Unit
-    override fun onConnectionSuccess() =
-        Toast.makeText(requireContext(), "Connected", Toast.LENGTH_SHORT).show()
+    override fun onConnectionSuccess() {
+        if (!isAdded) return
+        Handler(Looper.getMainLooper()).post {
+            context?.let {
+                Toast.makeText(it, "Connected", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
-    override fun onConnectionFailed(reason: String) =
-        Toast.makeText(requireContext(), "Connection failed: $reason", Toast.LENGTH_LONG).show()
+    override fun onConnectionFailed(reason: String) {
+        if (!isAdded) return
+        Handler(Looper.getMainLooper()).post {
+            context?.let {
+                Toast.makeText(it, "Connection failed: $reason", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
 
-    override fun onDisconnect() =
-        Toast.makeText(requireContext(), "Disconnected", Toast.LENGTH_SHORT).show()
+    override fun onDisconnect() {
+        // skip if this Fragment is no longer added (e.g. after a rotation)
+        if (!isAdded) return
+        // post on main thread in case we’re coming from an IO / encoder thread
+        Handler(Looper.getMainLooper()).post {
+            context?.let {
+                Toast.makeText(it, "Disconnected", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
-    override fun onAuthError() =
-        Toast.makeText(requireContext(), "Auth error", Toast.LENGTH_SHORT).show()
+    override fun onAuthError() {
+        if (!isAdded) return
+        Handler(Looper.getMainLooper()).post {
+            context?.let {
+                Toast.makeText(it, "Auth error", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
-    override fun onAuthSuccess() =
-        Toast.makeText(requireContext(), "Auth success", Toast.LENGTH_SHORT).show()
+    override fun onAuthSuccess() {
+        if (!isAdded) return
+        Handler(Looper.getMainLooper()).post {
+            context?.let {
+                Toast.makeText(it, "Auth success", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
 }

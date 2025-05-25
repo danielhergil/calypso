@@ -5,9 +5,9 @@ import android.os.Bundle
 import android.view.View
 import android.view.WindowInsets
 import android.view.WindowInsetsController
-import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import com.danihg.calypso.R
+import com.danihg.calypso.camera.ui.CameraControlsFragment
 
 class CameraActivity : AppCompatActivity() {
 
