@@ -1,23 +1,62 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:id="@+id/settings_fragment_root"
+    android:id="@+id/settings_container"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:visibility="visible">
+    android:layout_height="match_parent">
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btnSettings"
-        style="@style/Widget.MaterialComponents.Button"
-        android:layout_width="56dp"
-        android:layout_height="56dp"
-        android:layout_gravity="start|bottom"
+    <LinearLayout
+        android:id="@+id/settings_menu"
+        android:orientation="vertical"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|start"
         android:layout_marginStart="26dp"
-        android:layout_marginBottom="96dp"
-        app:backgroundTint="#80FFFFFF"
-        app:cornerRadius="28dp"
-        app:icon="@drawable/ic_settings"
-        app:iconSize="24dp"
-        android:contentDescription="@string/settings" />
+        android:layout_marginBottom="80dp">
+
+        <!-- Botón para cámara (oculto al inicio) -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSettingsCamera"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:visibility="gone"
+            android:layout_marginBottom="8dp"
+            android:alpha="0.8"
+            app:icon="@drawable/ic_settings_camera"
+            app:iconSize="34dp"
+            app:iconPadding="0dp"
+            app:iconGravity="textStart"
+            app:backgroundTint="#CCFFFFFF"
+            app:cornerRadius="28dp"/>
+
+        <!-- Botón para stream (oculto al inicio) -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSettingsStream"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:visibility="gone"
+            android:layout_marginBottom="8dp"
+            android:alpha="0.8"
+            app:icon="@drawable/ic_settings_stream"
+            app:iconSize="34dp"
+            app:iconPadding="0dp"
+            app:iconGravity="textStart"
+            app:backgroundTint="#CCFFFFFF"
+            app:cornerRadius="28dp"/>
+
+        <!-- Botón principal de ajustes -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSettings"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:alpha="0.8"
+            app:icon="@drawable/ic_settings"
+            app:iconSize="24dp"
+            app:backgroundTint="#CCFFFFFF"
+            app:cornerRadius="28dp"/>
+    </LinearLayout>
 
 </FrameLayout>
