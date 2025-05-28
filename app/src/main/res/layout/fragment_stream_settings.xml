@@ -5,6 +5,15 @@
     android:layout_height="match_parent"
     android:background="@color/dark_gray">
 
+    <ProgressBar
+        android:id="@+id/progressBar"
+        style="?android:attr/progressBarStyleLarge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:indeterminateTint="@color/calypso_red"
+        android:layout_gravity="center"
+        android:visibility="gone"/>
+
     <!-- Botón de cerrar (pequeño cuadrado con X) -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnCloseStreamSettings"
@@ -33,7 +42,7 @@
         android:textColor="@android:color/white"
         app:cornerRadius="4dp"
         app:iconPadding="8dp"
-        android:visibility="visible"
+        android:visibility="gone"
         app:rippleColor="?attr/colorOnPrimary" />
 
     <!-- Contenido desplazable con lista de perfiles y formulario GONE-->

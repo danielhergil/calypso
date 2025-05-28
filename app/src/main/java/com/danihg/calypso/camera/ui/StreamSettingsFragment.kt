@@ -11,6 +11,7 @@ import android.view.ViewGroup.LayoutParams
 import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.cardview.widget.CardView
@@ -22,12 +23,15 @@ import com.danihg.calypso.data.SettingsProfile
 import com.danihg.calypso.data.SettingsProfileRepository
 import com.danihg.calypso.data.StreamConnection
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 
 class StreamSettingsFragment : Fragment(R.layout.fragment_stream_settings) {
 
     private val repo = SettingsProfileRepository()
+
+    private lateinit var progressBar: ProgressBar
 
     // ---- Views ----
     private lateinit var btnClose: MaterialButton
@@ -87,6 +91,8 @@ class StreamSettingsFragment : Fragment(R.layout.fragment_stream_settings) {
         super.onViewCreated(view, savedInstanceState)
 
         // 1) Bind all views
+        progressBar          = view.findViewById(R.id.progressBar)
+
         btnClose             = view.findViewById(R.id.btnCloseStreamSettings)
         btnAddCenter         = view.findViewById(R.id.btnAddProfileCenter)
         scrollContainer      = view.findViewById(R.id.scroll_container)
@@ -277,44 +283,34 @@ class StreamSettingsFragment : Fragment(R.layout.fragment_stream_settings) {
                 "audioSettings"   to audioMap
             )
 
-            val finishAndReload = {
-                // 1) Oculta el formulario y los botones de Add
-                profileForm.visibility     = View.GONE
-                btnAddBelow.visibility     = View.GONE
-                btnAddCenter.visibility    = View.GONE
-                // 2) Muestra la lista de cards
-                scrollContainer.visibility = View.VISIBLE
-                profileListContainer.visibility = View.VISIBLE
-                // 3) Recarga la lista
-                repo.fetchProfiles(object : SettingsProfileRepository.FetchCallback {
-                    override fun onEmpty() = showEmptyState()
-                    override fun onError(e: Exception) = showEmptyState()
-                    override fun onLoaded(profiles: List<SettingsProfile>) = showProfiles(profiles)
-                })
-            }
-
             if (editingProfileId != null) {
                 // UPDATE
+                progressBar.visibility = View.VISIBLE
                 repo.updateProfile(editingProfileId!!, profileData, object : SettingsProfileRepository.UpdateCallback {
                     override fun onSuccess() {
+                        progressBar.visibility = View.GONE
+                        Snackbar.make(requireView(), "Profile Updated", Snackbar.LENGTH_SHORT).show()
                         finishAndReload()
                         editingProfileId = null
                         btnCreateProfile.text = "Create Profile"
                     }
                     override fun onFailure(e: Exception) {
-                        Toast.makeText(requireContext(),
-                            "Error al actualizar perfil", Toast.LENGTH_SHORT).show()
+                        progressBar.visibility = View.GONE
+                        Snackbar.make(requireView(), "Update Profile Error: ${e.message}", Snackbar.LENGTH_LONG).show()
                     }
                 })
             } else {
                 // CREATE
+                progressBar.visibility = View.VISIBLE
                 repo.createProfile(profileData, object : SettingsProfileRepository.CreateCallback {
                     override fun onSuccess(docId: String) {
+                        progressBar.visibility = View.GONE
+                        Snackbar.make(requireView(), "Profile Created", Snackbar.LENGTH_SHORT).show()
                         finishAndReload()
                     }
                     override fun onFailure(e: Exception) {
-                        Toast.makeText(requireContext(),
-                            "Error al crear perfil", Toast.LENGTH_SHORT).show()
+                        progressBar.visibility = View.GONE
+                        Snackbar.make(requireView(), "Create Profile Error: ${e.message}", Snackbar.LENGTH_LONG).show()
                     }
                 })
             }
@@ -325,11 +321,25 @@ class StreamSettingsFragment : Fragment(R.layout.fragment_stream_settings) {
         btnAddCenter.setOnClickListener { showForm() }
         btnAddBelow.setOnClickListener { showForm() }
 
+        progressBar.visibility = View.VISIBLE
+        scrollContainer.visibility      = View.GONE
+        profileListContainer.visibility = View.GONE
+
         // 7) Load existing
         repo.fetchProfiles(object: SettingsProfileRepository.FetchCallback {
-            override fun onEmpty() = showEmptyState()
-            override fun onError(e: Exception) = showEmptyState()
-            override fun onLoaded(profiles: List<SettingsProfile>) = showProfiles(profiles)
+            override fun onEmpty() {
+                progressBar.visibility = View.GONE
+                btnAddCenter.visibility = View.VISIBLE
+                showEmptyState()
+            }
+            override fun onError(e: Exception) {
+                progressBar.visibility = View.GONE
+                showEmptyState()
+            }
+            override fun onLoaded(profiles: List<SettingsProfile>) {
+                progressBar.visibility = View.GONE
+                showProfiles(profiles)
+            }
         })
     }
 
@@ -429,16 +439,16 @@ class StreamSettingsFragment : Fragment(R.layout.fragment_stream_settings) {
                 when (text) {
                     "Delete" -> {
                         btn.setOnClickListener {
+                            progressBar.visibility = View.VISIBLE
                             repo.deleteProfile(profile.id, object : SettingsProfileRepository.DeleteCallback {
                                 override fun onSuccess() {
-                                    profileListContainer.removeView(card)
+                                    progressBar.visibility = View.GONE
+                                    Snackbar.make(requireView(), "Profile Deleted", Snackbar.LENGTH_SHORT).show()
+                                    finishAndReload()
                                 }
                                 override fun onFailure(e: Exception) {
-                                    Toast.makeText(
-                                        requireContext(),
-                                        "Error al borrar perfil: ${e.message}",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
+                                    progressBar.visibility = View.GONE
+                                    Snackbar.make(requireView(), "Delete Profile Error", Snackbar.LENGTH_LONG).show()
                                 }
                             })
                         }
@@ -570,6 +580,34 @@ class StreamSettingsFragment : Fragment(R.layout.fragment_stream_settings) {
         // Reset Audio Settings
         autoCompleteAudioSource.setText("Device Audio", false)
         autoCompleteAudioBitrate.setText("160", false)
+    }
+
+    private fun finishAndReload() {
+        // 1) Oculta el formulario y los botones de “Add”
+        profileForm.visibility  = View.GONE
+        btnAddBelow.visibility  = View.GONE
+        btnAddCenter.visibility = View.GONE
+
+        progressBar.visibility = View.VISIBLE
+
+        // 2) Muestra la lista de cards
+        scrollContainer.visibility      = View.VISIBLE
+        profileListContainer.visibility = View.VISIBLE
+        // 3) Recarga la lista desde Firestore
+        repo.fetchProfiles(object: SettingsProfileRepository.FetchCallback {
+            override fun onEmpty() {
+                progressBar.visibility = View.GONE
+                showEmptyState()
+            }
+            override fun onError(e: Exception) {
+                progressBar.visibility = View.GONE
+                showEmptyState()
+            }
+            override fun onLoaded(profiles: List<SettingsProfile>) {
+                progressBar.visibility = View.GONE
+                showProfiles(profiles)
+            }
+        })
     }
 }
 
