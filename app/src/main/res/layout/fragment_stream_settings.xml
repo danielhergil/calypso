@@ -1,0 +1,425 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/dark_gray">
+
+    <!-- Botón de cerrar (pequeño cuadrado con X) -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnCloseStreamSettings"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:layout_gravity="top|end"
+        android:layout_margin="16dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:padding="0dp"
+        app:icon="@drawable/ic_close"
+        app:iconTint="@color/WHITE"
+        app:iconGravity="textStart"
+        app:iconPadding="0dp"
+        app:backgroundTint="@android:color/transparent"
+        app:cornerRadius="16dp" />
+
+    <!-- Botón central para añadir perfil (mostrado si no hay perfiles) VISIBLE-->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnAddProfileCenter"
+        style="@style/Widget.MaterialComponents.Button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:text="Add New Profile"
+        app:backgroundTint="@color/calypso_red"
+        android:textColor="@android:color/white"
+        app:cornerRadius="4dp"
+        app:iconPadding="8dp"
+        android:visibility="visible"
+        app:rippleColor="?attr/colorOnPrimary" />
+
+    <!-- Contenido desplazable con lista de perfiles y formulario GONE-->
+    <ScrollView
+        android:id="@+id/scroll_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginTop="64dp"
+        android:visibility="gone"
+        android:padding="16dp">
+
+        <LinearLayout
+            android:id="@+id/content_container"
+            android:orientation="vertical"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <!-- Lista de cards de perfiles -->
+            <LinearLayout
+                android:id="@+id/profile_list_container"
+                android:orientation="vertical"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+
+            <!-- Botón para añadir nuevo perfil debajo de las cards XXX-->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnAddProfile"
+                style="@style/Widget.MaterialComponents.Button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Add New Profile"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="16dp"
+                app:backgroundTint="@color/calypso_red"
+                android:textColor="@android:color/white"
+                app:cornerRadius="4dp"
+                app:iconPadding="8dp"
+                app:rippleColor="?attr/colorOnPrimary" />
+
+            <!-- Formulario de creación de perfil, oculto inicialmente GONE-->
+            <LinearLayout
+                android:id="@+id/profile_form"
+                android:orientation="vertical"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:visibility="gone"
+                android:layout_marginTop="16dp">
+
+                <!-- Sección de Profile Settings -->
+                <TextView
+                    android:id="@+id/tvProfileSettingsHeader"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Profile Settings"
+                    style="@style/TextAppearance.MaterialComponents.Headline6"
+                    android:layout_marginBottom="8dp" />
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/tilProfileAlias"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Profile Name">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etProfileAlias"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- Sección de Stream Connections -->
+                <TextView
+                    android:id="@+id/tvStreamConnectionsHeader"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Stream Connections"
+                    style="@style/TextAppearance.MaterialComponents.Headline6"
+                    android:layout_marginTop="16dp"
+                    android:layout_marginBottom="8dp" />
+
+                <!-- Dropdown de conexiones (Exposed Dropdown Menu) -->
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/tilConnectionDropdown"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Select Connection"
+                    android:visibility="gone"
+                    android:layout_marginBottom="12dp">
+
+                    <AutoCompleteTextView
+                        android:id="@+id/autoCompleteConnections"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/tilConnectionUrl"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="RTMP URL">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etConnectionUrl"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="textUri" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/tilConnectionKey"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Stream Key"
+                    android:layout_marginTop="8dp">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etConnectionKey"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="text" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/tilConnectionAlias"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Connection Alias"
+                    android:layout_marginTop="8dp">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etConnectionAlias"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="textPersonName" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- Botones de conexión en fila -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="12dp"
+                    android:weightSum="3">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnAddConnection"
+                        style="@style/Widget.MaterialComponents.Button"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="ADD"
+                        app:backgroundTint="@color/calypso_red"
+                        android:textColor="@android:color/white"
+                        app:cornerRadius="4dp"
+                        app:rippleColor="?attr/colorOnPrimary" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnUpdateConnection"
+                        style="@style/Widget.MaterialComponents.Button"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:visibility="gone"
+                        android:text="UPDATE"
+                        app:backgroundTint="@color/secondary_button"
+                        android:textColor="@android:color/white"
+                        app:cornerRadius="4dp"
+                        app:rippleColor="?attr/colorOnPrimary"
+                        android:layout_marginStart="4dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnDeleteConnection"
+                        style="@style/Widget.MaterialComponents.Button"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:visibility="gone"
+                        android:text="DELETE"
+                        app:backgroundTint="@color/secondary_button"
+                        android:textColor="@android:color/white"
+                        app:cornerRadius="4dp"
+                        app:rippleColor="?attr/colorOnPrimary"
+                        android:layout_marginStart="4dp" />
+
+                </LinearLayout>
+
+                <!-- Sección de Video Settings -->
+                <TextView
+                    android:id="@+id/tvVideoSettingsHeader"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Video Settings"
+                    style="@style/TextAppearance.MaterialComponents.Headline6"
+                    android:layout_marginTop="24dp"
+                    android:layout_marginBottom="8dp" />
+
+                <!-- Video Source Dropdown -->
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/tilVideoSource"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Video Source"
+                    android:layout_marginBottom="12dp">
+
+                    <AutoCompleteTextView
+                        android:id="@+id/autoCompleteVideoSource"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="none" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- Codec Dropdown -->
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/tilVideoCodec"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Codec"
+                    android:layout_marginBottom="12dp">
+
+                    <AutoCompleteTextView
+                        android:id="@+id/autoCompleteCodec"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="none" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- Resolution Dropdown -->
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/tilVideoResolution"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Resolution"
+                    android:layout_marginBottom="12dp">
+
+                    <AutoCompleteTextView
+                        android:id="@+id/autoCompleteResolution"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="none" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- FPS Dropdown -->
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/tilVideoFps"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="FPS"
+                    android:layout_marginBottom="12dp">
+
+                    <AutoCompleteTextView
+                        android:id="@+id/autoCompleteFps"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="none" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- Bitrate Input -->
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/tilVideoBitrate"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Bitrate"
+                    app:suffixText="Mbps"
+                    android:layout_marginBottom="12dp">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etVideoBitrate"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="number"
+                        android:text="5" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- Sección de Record Settings -->
+                <TextView
+                    android:id="@+id/tvRecordSettingsHeader"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Record Settings"
+                    style="@style/TextAppearance.MaterialComponents.Headline6"
+                    android:layout_marginTop="24dp"
+                    android:layout_marginBottom="8dp" />
+
+                <!-- Record Resolution Dropdown -->
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/tilRecordResolution"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Resolution"
+                    android:layout_marginBottom="12dp">
+
+                    <AutoCompleteTextView
+                        android:id="@+id/autoCompleteRecordResolution"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="none" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- Record Bitrate Input -->
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/tilRecordBitrate"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Bitrate"
+                    app:suffixText="Mbps"
+                    android:layout_marginBottom="12dp">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etRecordBitrate"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="number"
+                        android:text="5" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- Sección de Audio Settings -->
+                <TextView
+                    android:id="@+id/tvAudioSettingsHeader"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Audio Settings"
+                    style="@style/TextAppearance.MaterialComponents.Headline6"
+                    android:layout_marginTop="24dp"
+                    android:layout_marginBottom="8dp" />
+
+                <!-- Audio Source Dropdown -->
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/tilAudioSource"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Audio Source"
+                    android:layout_marginBottom="12dp">
+
+                    <AutoCompleteTextView
+                        android:id="@+id/autoCompleteAudioSource"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="none" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- Audio Bitrate Dropdown -->
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/tilAudioBitrate"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Audio Bitrate (kbps)"
+                    android:layout_marginBottom="12dp">
+
+                    <AutoCompleteTextView
+                        android:id="@+id/autoCompleteAudioBitrate"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="none" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- Botón Create Profile -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnCreateProfile"
+                    style="@style/Widget.MaterialComponents.Button"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Create Profile"
+                    android:layout_marginTop="24dp"
+                    app:backgroundTint="@color/calypso_red"
+                    android:textColor="@android:color/white"
+                    app:cornerRadius="4dp"
+                    android:alpha="0.5"
+                    app:rippleColor="?attr/colorOnPrimary"
+                    android:enabled="false" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+    </ScrollView>
+
+</FrameLayout>

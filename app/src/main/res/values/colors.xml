@@ -9,6 +9,7 @@
     <color name="gray">#393939</color>
     <color name="dark_gray">#212020</color>
     <color name="black">#121212</color>
+    <color name="card_default_gray">#EEEEEE</color>
     <color name="calypso_red">#CE5050</color>
     <color name="green">#49DD63</color>
     <color name="background_button">#111111</color>
@@ -17,4 +18,5 @@
     <color name="selected_field">#7C7C7C</color>
     <color name="unselected_field">#4A4A4A</color>
     <color name="white">#FFFFFF</color>
+    <color name="secondary_button">#4A6A85</color>
 </resources>

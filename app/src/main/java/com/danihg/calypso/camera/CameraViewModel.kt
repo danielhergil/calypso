@@ -1,11 +1,13 @@
 package com.danihg.calypso.camera
 
 import android.app.Application
+import android.media.MediaRecorder
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.pedro.common.ConnectChecker
+import com.pedro.encoder.input.sources.audio.MicrophoneSource
 import com.pedro.library.generic.GenericStream
 
 class CameraViewModel(
@@ -18,7 +20,7 @@ class CameraViewModel(
         getStreamClient().setBitrateExponentialFactor(0.5f)
         // video/audio preparation
         prepareVideo(1920, 1080, 5_000_000)
-        prepareAudio(32_000, true, 128_000)
+        prepareAudio(48_000, true, 128_000)
         getStreamClient().setReTries(10)
     }
 

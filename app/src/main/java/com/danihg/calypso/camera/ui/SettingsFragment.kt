@@ -7,6 +7,7 @@ import androidx.core.view.isGone
 import androidx.fragment.app.Fragment
 import com.danihg.calypso.R
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 class SettingsFragment : Fragment(R.layout.fragment_settings) {
 
@@ -36,7 +37,10 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
 
         // Listeners para los botones adicionales
         btnSettingsStream.setOnClickListener {
-            // TODO: tu lógica para ajustes de stream
+            parentFragmentManager.beginTransaction()
+                .replace(R.id.settings_container, StreamSettingsFragment())
+                .addToBackStack(null)
+                .commit()
         }
         btnSettingsCamera.setOnClickListener {
             // TODO: tu lógica para ajustes de cámara
