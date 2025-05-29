@@ -15,20 +15,15 @@ class CameraActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_camera)
-
-        val tx = supportFragmentManager.beginTransaction()
+        enterImmersiveMode()
 
         if (savedInstanceState == null) {
-            // Sólo la primera vez: cámara y controles
-            tx.replace(R.id.camera_container, CameraFragment.newInstance())
+            supportFragmentManager.beginTransaction()
+                .replace(R.id.camera_container, CameraFragment.newInstance())
                 .replace(R.id.controls_container, CameraControlsFragment())
+                .replace(R.id.settings_container, SettingsFragment())
+                .commit()
         }
-
-        // Siempre (incluso tras rotación) reemplazamos settings_container
-        tx.replace(R.id.settings_container, SettingsFragment())
-            .commit()
-
-        enterImmersiveMode()
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
