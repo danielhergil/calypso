@@ -15,7 +15,9 @@ data class SettingsProfile(
     val videoFps: Int,
     val recordResolution: String,
     val codec: String,
-    val connectionsCount: Int
+    val connectionsCount: Int,
+    val selectedConnectionAlias: String?,
+    val selectedConnectionFullUrl: String?
 )
 
 /**
@@ -56,7 +58,21 @@ class SettingsProfileRepository {
                         val video = doc.get("videoSettings") as? Map<*,*> ?: emptyMap<String, Any>()
                         val record = doc.get("recordSettings") as? Map<*,*> ?: emptyMap<String, Any>()
                         val fps = (video["fps"] as? Number)?.toInt() ?: 0
-                        val conns = doc.get("connections") as? List<*> ?: emptyList<Any>()
+                        // obtenemos lista raw de conexiones
+                        val rawConns = doc.get("connections") as? List<Map<String,Any>> ?: emptyList()
+                        val connectionsCount = rawConns.size
+
+                        // leemos el alias guardado
+                        val savedAlias = doc.getString("selectedConnectionAlias")
+
+                        // construimos full_url de la conexión seleccionada, si existe
+                        val fullUrl = rawConns
+                            .firstOrNull { it["alias"] == savedAlias }
+                            ?.let {
+                                val url = (it["rtmp_url"] as String).trimEnd('/')
+                                val key = it["streamkey"] as String
+                                "$url/$key"
+                            }
                         SettingsProfile(
                             id = doc.id,
                             alias = doc.getString("alias") ?: "",
@@ -64,7 +80,9 @@ class SettingsProfileRepository {
                             videoFps = fps,
                             recordResolution = record["resolution"] as? String ?: "",
                             codec = video["codec"] as? String ?: "",
-                            connectionsCount = conns.size
+                            connectionsCount = connectionsCount,
+                            selectedConnectionAlias = savedAlias,
+                            selectedConnectionFullUrl = fullUrl
                         )
                     }
                     callback.onLoaded(list)

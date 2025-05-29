@@ -649,8 +649,11 @@ class StreamSettingsFragment : Fragment(R.layout.fragment_stream_settings) {
                 text = "Record: ${profile.recordResolution} @${profile.videoFps}fps - Codec: ${profile.codec}"
                 setPadding(6, 0, 0, resources.getDimensionPixelSize(R.dimen.padding_small))
             })
+
+            val urlToShow = profile.selectedConnectionFullUrl ?: "None"
+
             container.addView(TextView(requireContext()).apply {
-                text = "RTMP Connections: ${profile.connectionsCount}"
+                text = "RTMP: $urlToShow"
                 setPadding(6, 0, 0, resources.getDimensionPixelSize(R.dimen.padding_medium))
             })
 
@@ -709,6 +712,7 @@ class StreamSettingsFragment : Fragment(R.layout.fragment_stream_settings) {
                                 Log.d("StreamSettings", """
                 ── Load Profile ─────────────────────────────────────
                 alias=$alias
+                rtmp=$urlToShow
                 selectedConnection=$selectedAlias
                 video:   source=$vSource, codec=$vCodec, res=$vRes, fps=$vFps, br(Mbps)=$vBr
                 record:  res=$rRes, br(Mbps)=$rBr
