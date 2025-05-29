@@ -1,11 +1,12 @@
+// StreamSettingsFragment.kt
 package com.danihg.calypso.camera.ui
 
-import android.animation.LayoutTransition
+import android.annotation.SuppressLint
 import android.os.Bundle
-import android.text.Editable
-import android.text.TextWatcher
 import android.util.Log
 import android.view.View
+import android.view.View.GONE
+import android.view.View.VISIBLE
 import android.view.ViewGroup
 import android.view.ViewGroup.LayoutParams
 import android.widget.ArrayAdapter
@@ -13,13 +14,15 @@ import android.widget.AutoCompleteTextView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
-import android.widget.Toast
 import androidx.cardview.widget.CardView
 import androidx.core.content.ContextCompat
 import androidx.core.view.children
+import androidx.core.widget.doOnTextChanged
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.viewModels
 import com.danihg.calypso.R
 import com.danihg.calypso.data.SettingsProfile
+import com.danihg.calypso.models.StreamSettingsViewModel
 import com.danihg.calypso.data.SettingsProfileRepository
 import com.danihg.calypso.data.StreamConnection
 import com.google.android.material.button.MaterialButton
@@ -30,287 +33,506 @@ import com.google.android.material.textfield.TextInputLayout
 class StreamSettingsFragment : Fragment(R.layout.fragment_stream_settings) {
 
     private val repo = SettingsProfileRepository()
+    private val vm   by viewModels<StreamSettingsViewModel>()
 
+    // Views
     private lateinit var progressBar: ProgressBar
-
-    // ---- Views ----
     private lateinit var btnClose: MaterialButton
     private lateinit var btnAddCenter: MaterialButton
+    private lateinit var btnAddBelow: MaterialButton
     private lateinit var scrollContainer: View
     private lateinit var profileListContainer: LinearLayout
-    private lateinit var btnAddBelow: MaterialButton
     private lateinit var profileForm: LinearLayout
     private lateinit var btnCreateProfile: MaterialButton
 
-    // Stream Connections
-    private lateinit var tilConnectionDropdown: TextInputLayout
-    private lateinit var autoCompleteConnections: AutoCompleteTextView
-    private lateinit var tilConnectionUrl: TextInputLayout
-    private lateinit var etConnectionUrl: TextInputEditText
-    private lateinit var etConnectionKey: TextInputEditText
-    private lateinit var etConnectionAlias: TextInputEditText
-    private lateinit var btnAddConnection: MaterialButton
-    private lateinit var btnUpdateConnection: MaterialButton
-    private lateinit var btnDeleteConnection: MaterialButton
+    private lateinit var tilConnDropdown: TextInputLayout
+    private lateinit var acConn: AutoCompleteTextView
+    private lateinit var tilConnUrl: TextInputLayout
+    private lateinit var etConnUrl: TextInputEditText
+    private lateinit var etConnKey: TextInputEditText
+    private lateinit var etConnAlias: TextInputEditText
+    private lateinit var btnAddConn: MaterialButton
+    private lateinit var btnUpdateConn: MaterialButton
+    private lateinit var btnDeleteConn: MaterialButton
 
-    // Video Settings
-    private lateinit var tilVideoSource: TextInputLayout
-    private lateinit var autoCompleteVideoSource: AutoCompleteTextView
-    private lateinit var tilVideoCodec: TextInputLayout
-    private lateinit var autoCompleteCodec: AutoCompleteTextView
-    private lateinit var tilVideoResolution: TextInputLayout
-    private lateinit var autoCompleteResolution: AutoCompleteTextView
-    private lateinit var tilVideoFps: TextInputLayout
-    private lateinit var autoCompleteFps: AutoCompleteTextView
-    private lateinit var tilVideoBitrate: TextInputLayout
+    private lateinit var acVideoSource: AutoCompleteTextView
+    private lateinit var acCodec: AutoCompleteTextView
+    private lateinit var acResolution: AutoCompleteTextView
+    private lateinit var acFps: AutoCompleteTextView
     private lateinit var etVideoBitrate: TextInputEditText
 
-    // Record Settings
-    private lateinit var tilRecordResolution: TextInputLayout
-    private lateinit var autoCompleteRecordResolution: AutoCompleteTextView
-    private lateinit var tilRecordBitrate: TextInputLayout
+    private lateinit var acRecordResolution: AutoCompleteTextView
     private lateinit var etRecordBitrate: TextInputEditText
 
-    // Audio Settings
-    private lateinit var tilAudioSource: TextInputLayout
-    private lateinit var autoCompleteAudioSource: AutoCompleteTextView
-    private lateinit var tilAudioBitrate: TextInputLayout
-    private lateinit var autoCompleteAudioBitrate: AutoCompleteTextView
+    private lateinit var acAudioSource: AutoCompleteTextView
+    private lateinit var acAudioBitrate: AutoCompleteTextView
 
     private lateinit var etProfileAlias: TextInputEditText
-    private var isAliasValid = false
 
-    // In-memory data
-    private val connections = mutableListOf<StreamConnection>()
-    private lateinit var connectionsAdapter: ArrayAdapter<String>
-    private var selectedConnectionIndex = -1
+    private val videoSourceOptions      = listOf("Device Camera", "USB Camera")
+    private val codecOptions            = listOf("H264", "H265")
+    private val resolutionOptions       = listOf("720p", "1080p", "1440p")
+    private val fpsOptions              = listOf("30", "60")
+    private val audioSourceOptions      = listOf("Device Audio", "Microphone")
+    private val audioBitrateOptions     = listOf("96", "160", "256")
+    private val recordResolutionOptions = listOf("720p", "1080p", "1440p")
 
-    private var editingProfileId: String? = null
+    // Adapter for RTMP-connections dropdown
+    private lateinit var connAdapter: ArrayAdapter<String>
 
+
+    @SuppressLint("ClickableViewAccessibility")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // 1) Bind all views
-        progressBar          = view.findViewById(R.id.progressBar)
+        // 1) Bind views
+        progressBar           = view.findViewById(R.id.progressBar)
+        btnClose              = view.findViewById(R.id.btnCloseStreamSettings)
+        btnAddCenter          = view.findViewById(R.id.btnAddProfileCenter)
+        btnAddBelow           = view.findViewById(R.id.btnAddProfile)
+        scrollContainer       = view.findViewById(R.id.scroll_container)
+        profileListContainer  = view.findViewById(R.id.profile_list_container)
+        profileForm           = view.findViewById(R.id.profile_form)
+        btnCreateProfile      = view.findViewById(R.id.btnCreateProfile)
 
-        btnClose             = view.findViewById(R.id.btnCloseStreamSettings)
-        btnAddCenter         = view.findViewById(R.id.btnAddProfileCenter)
-        scrollContainer      = view.findViewById(R.id.scroll_container)
-        profileListContainer = view.findViewById(R.id.profile_list_container)
-        btnAddBelow          = view.findViewById(R.id.btnAddProfile)
-        profileForm          = view.findViewById(R.id.profile_form)
-        btnCreateProfile     = view.findViewById(R.id.btnCreateProfile)
+        tilConnDropdown       = view.findViewById(R.id.tilConnectionDropdown)
+        acConn                = view.findViewById(R.id.autoCompleteConnections)
+        tilConnUrl            = view.findViewById(R.id.tilConnectionUrl)
+        etConnUrl             = view.findViewById(R.id.etConnectionUrl)
+        etConnKey             = view.findViewById(R.id.etConnectionKey)
+        etConnAlias           = view.findViewById(R.id.etConnectionAlias)
+        btnAddConn            = view.findViewById(R.id.btnAddConnection)
+        btnUpdateConn         = view.findViewById(R.id.btnUpdateConnection)
+        btnDeleteConn         = view.findViewById(R.id.btnDeleteConnection)
 
-        tilConnectionDropdown    = view.findViewById(R.id.tilConnectionDropdown)
-        autoCompleteConnections  = view.findViewById(R.id.autoCompleteConnections)
-        tilConnectionUrl         = view.findViewById(R.id.tilConnectionUrl)
-        etConnectionUrl          = view.findViewById(R.id.etConnectionUrl)
-        etConnectionKey          = view.findViewById(R.id.etConnectionKey)
-        etConnectionAlias        = view.findViewById(R.id.etConnectionAlias)
-        btnAddConnection         = view.findViewById(R.id.btnAddConnection)
-        btnUpdateConnection      = view.findViewById(R.id.btnUpdateConnection)
-        btnDeleteConnection      = view.findViewById(R.id.btnDeleteConnection)
+        acVideoSource         = view.findViewById(R.id.autoCompleteVideoSource)
+        acCodec               = view.findViewById(R.id.autoCompleteCodec)
+        acResolution          = view.findViewById(R.id.autoCompleteResolution)
+        acFps                 = view.findViewById(R.id.autoCompleteFps)
+        etVideoBitrate        = view.findViewById(R.id.etVideoBitrate)
 
-        tilVideoSource          = view.findViewById(R.id.tilVideoSource)
-        autoCompleteVideoSource = view.findViewById(R.id.autoCompleteVideoSource)
-        tilVideoCodec           = view.findViewById(R.id.tilVideoCodec)
-        autoCompleteCodec  = view.findViewById(R.id.autoCompleteCodec)
-        tilVideoResolution      = view.findViewById(R.id.tilVideoResolution)
-        autoCompleteResolution  = view.findViewById(R.id.autoCompleteResolution)
-        tilVideoFps             = view.findViewById(R.id.tilVideoFps)
-        autoCompleteFps         = view.findViewById(R.id.autoCompleteFps)
-        tilVideoBitrate         = view.findViewById(R.id.tilVideoBitrate)
-        etVideoBitrate          = view.findViewById(R.id.etVideoBitrate)
+        acRecordResolution    = view.findViewById(R.id.autoCompleteRecordResolution)
+        etRecordBitrate       = view.findViewById(R.id.etRecordBitrate)
 
-        tilRecordResolution         = view.findViewById(R.id.tilRecordResolution)
-        autoCompleteRecordResolution = view.findViewById(R.id.autoCompleteRecordResolution)
-        tilRecordBitrate            = view.findViewById(R.id.tilRecordBitrate)
-        etRecordBitrate             = view.findViewById(R.id.etRecordBitrate)
+        acAudioSource         = view.findViewById(R.id.autoCompleteAudioSource)
+        acAudioBitrate        = view.findViewById(R.id.autoCompleteAudioBitrate)
 
-        tilAudioSource           = view.findViewById(R.id.tilAudioSource)
-        autoCompleteAudioSource  = view.findViewById(R.id.autoCompleteAudioSource)
-        tilAudioBitrate          = view.findViewById(R.id.tilAudioBitrate)
-        autoCompleteAudioBitrate = view.findViewById(R.id.autoCompleteAudioBitrate)
+        etProfileAlias        = view.findViewById(R.id.etProfileAlias)
 
-        etProfileAlias           = view.findViewById(R.id.etProfileAlias)
+        // Observamos el flag y aplicamos UI:
+        vm.isFormVisible.observe(viewLifecycleOwner) { formVisible ->
+            // 1) aseguramos que el contenedor general esté visible
+            scrollContainer.visibility = VISIBLE
 
-        // 2) Setup adapters
-        connectionsAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_list_item_1, mutableListOf())
-        autoCompleteConnections.setAdapter(connectionsAdapter)
-        tilConnectionDropdown.visibility = View.GONE
-        btnUpdateConnection.visibility = View.GONE
-        btnDeleteConnection.visibility = View.GONE
+            if (formVisible) {
+                // en modo formulario oculto lista y botones de "add"
+                profileListContainer.visibility = GONE
+                btnAddCenter.visibility        = GONE
+                btnAddBelow.visibility         = GONE
 
-        arrayOf("Device Camera","USB Camera").let {
-            ArrayAdapter(requireContext(), android.R.layout.simple_list_item_1, it).also { adapter ->
-                autoCompleteVideoSource.setAdapter(adapter)
-                autoCompleteVideoSource.setText(it[0], false)
-            }
-        }
-        arrayOf("H264","H265").let {
-            ArrayAdapter(requireContext(), android.R.layout.simple_list_item_1, it).also { adapter ->
-                autoCompleteCodec.setAdapter(adapter)
-                autoCompleteCodec.setText(it[0], false)
-            }
-        }
-        arrayOf("720p","1080p","1440p").let {
-            ArrayAdapter(requireContext(), android.R.layout.simple_list_item_1, it).also { adapter ->
-                autoCompleteResolution.setAdapter(adapter)
-                autoCompleteResolution.setText("1080p", false)
-                autoCompleteRecordResolution.setAdapter(adapter)
-                autoCompleteRecordResolution.setText("1080p", false)
-            }
-        }
-        arrayOf("30","60").let {
-            ArrayAdapter(requireContext(), android.R.layout.simple_list_item_1, it).also { adapter ->
-                autoCompleteFps.setAdapter(adapter)
-                autoCompleteFps.setText(it[0], false)
-            }
-        }
-        arrayOf("Device Audio","Microphone").let {
-            ArrayAdapter(requireContext(), android.R.layout.simple_list_item_1, it).also { adapter ->
-                autoCompleteAudioSource.setAdapter(adapter)
-                autoCompleteAudioSource.setText(it[0], false)
-            }
-        }
-        arrayOf("96","160","256").let {
-            ArrayAdapter(requireContext(), android.R.layout.simple_list_item_1, it).also { adapter ->
-                autoCompleteAudioBitrate.setAdapter(adapter)
-                autoCompleteAudioBitrate.setText("160", false)
+                // y muestro el formulario
+                profileForm.visibility         = VISIBLE
+            } else {
+                // en modo lista oculto formulario
+                profileForm.visibility         = GONE
+
+                // muestro lista y botón principal de "add"
+                profileListContainer.visibility= VISIBLE
+                btnAddCenter.visibility        = VISIBLE
+                btnAddBelow.visibility         = GONE
             }
         }
 
-        etProfileAlias.addTextChangedListener(object: TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int){}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                btnCreateProfile.isEnabled = !s.isNullOrBlank()
-                if (btnCreateProfile.isEnabled) btnCreateProfile.alpha = 1f
-            }
-            override fun afterTextChanged(s: Editable?){}
-        })
+        connAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_list_item_1)
+        acConn.setAdapter(connAdapter)
+        acConn.threshold = 0
 
-        // 3) Stream connections listeners (unchanged)
-        btnAddConnection.setOnClickListener {
-            val url = etConnectionUrl.text.toString().trim()
-            val key = etConnectionKey.text.toString().trim()
-            val alias = etConnectionAlias.text.toString().trim()
+        // helper para repoblar el dropdown con "None" + aliases actuales
+        fun refreshConnAdapter() {
+            val items = listOf("None") + (vm.connections.value ?: emptyList()).map { it.alias }
+            connAdapter.clear()
+            connAdapter.addAll(items)
+            connAdapter.notifyDataSetChanged()
+            tilConnDropdown.visibility = if (items.isNotEmpty()) VISIBLE else GONE
+        }
+
+        refreshConnAdapter()
+
+        // Cuando toques el campo, vuelve a colocar el adapter y despliega
+        acConn.setOnClickListener {
+            if (connAdapter.count > 0) {
+                acConn.setAdapter(connAdapter)
+                acConn.showDropDown()
+            }
+        }
+
+        // También al tocar la flecha / icono:
+        acConn.setOnTouchListener { v, _ ->
+            if (connAdapter.count > 0) {
+                acConn.setAdapter(connAdapter)
+                acConn.showDropDown()
+            }
+            // deja que pase el evento también para que conserve el foco
+            false
+        }
+        tilConnDropdown.visibility = GONE
+        btnUpdateConn.visibility   = GONE
+        btnDeleteConn.visibility   = GONE
+
+        fun setupDropdown(dropdown: AutoCompleteTextView, items: List<String>) {
+            ArrayAdapter(requireContext(), android.R.layout.simple_list_item_1, items)
+                .also { dropdown.setAdapter(it) }
+        }
+
+        setupDropdown(acVideoSource,      videoSourceOptions)
+        setupDropdown(acCodec,            codecOptions)
+        setupDropdown(acResolution,       resolutionOptions)
+        setupDropdown(acFps,              fpsOptions)
+        setupDropdown(acAudioSource,      audioSourceOptions)
+        setupDropdown(acAudioBitrate,     audioBitrateOptions)
+        setupDropdown(acRecordResolution, recordResolutionOptions)
+
+        // 3) Observe VM → UI
+        vm.isUpdateMode.observe(viewLifecycleOwner) { updating ->
+            btnCreateProfile.text = if (updating) "Update Profile" else "Create Profile"
+        }
+        // 1) VM → UI: cuando cambia la lista de conexiones
+        vm.connections.observe(viewLifecycleOwner) { _ ->
+            refreshConnAdapter()
+            // si no hay selección o es out-of-bounds, volvemos a “None”
+            if (vm.selectedConnectionIndex.value !in (vm.connections.value?.indices ?: emptyList())) {
+                vm.selectedConnectionIndex.value = -1
+            }
+        }
+
+        // 2) VM → UI: cuando cambia la selección
+        vm.selectedConnectionIndex.observe(viewLifecycleOwner) { idx ->
+            val list = vm.connections.value ?: emptyList()
+            if (idx in list.indices) {
+                val c = list[idx]
+                // pinto alias en el dropdown y datos en los campos
+                acConn.setText(c.alias, false)
+                etConnUrl.setText(c.url)
+                etConnKey.setText(c.streamKey)
+                etConnAlias.setText(c.alias)
+                btnUpdateConn.visibility = VISIBLE
+                btnDeleteConn.visibility = VISIBLE
+            } else {
+                // “None” seleccionado
+                acConn.setText("None", false)
+                etConnUrl.text?.clear()
+                etConnKey.text?.clear()
+                etConnAlias.text?.clear()
+                btnUpdateConn.visibility = GONE
+                btnDeleteConn.visibility = GONE
+            }
+        }
+
+        // 3) UI → VM: cuando el usuario elige una opción del dropdown
+        acConn.setOnItemClickListener { _, _, pos, _ ->
+            // pos==0 => None, pos>0 => índice pos-1 en vm.connections
+            vm.selectedConnectionIndex.value = if (pos > 0) pos - 1 else -1
+        }
+
+        // 4) Hacer siempre dropdown al tocar o clickar
+        val showConnDropdown = {
+            refreshConnAdapter()
+            acConn.showDropDown()
+        }
+
+
+        vm.profileAlias.observe(viewLifecycleOwner) { alias ->
+            // Sincroniza el EditText (ya lo haces) **y** el botón
+            btnCreateProfile.isEnabled = alias.isNotBlank()
+            btnCreateProfile.alpha     = if (alias.isNotBlank()) 1f else 0.5f
+        }
+        vm.connectionUrl.observe(viewLifecycleOwner) { if (etConnUrl.text.toString() != it) etConnUrl.setText(it) }
+        vm.connectionKey.observe(viewLifecycleOwner) { if (etConnKey.text.toString() != it) etConnKey.setText(it) }
+        vm.connectionAlias.observe(viewLifecycleOwner) { if (etConnAlias.text.toString() != it) etConnAlias.setText(it) }
+        vm.profileAlias.observe(viewLifecycleOwner)   { if (etProfileAlias.text.toString() != it) etProfileAlias.setText(it) }
+        // Video Source
+        vm.videoSource.observe(viewLifecycleOwner) { value ->
+            if (acVideoSource.text.toString() != value) {
+                acVideoSource.setText(value, false)
+            }
+        }
+        acVideoSource.setOnClickListener {
+            val adapter = ArrayAdapter(requireContext(),
+                android.R.layout.simple_list_item_1,
+                videoSourceOptions
+            )
+            acVideoSource.setAdapter(adapter)
+            acVideoSource.showDropDown()
+        }
+        // Video Codec
+        vm.videoCodec.observe(viewLifecycleOwner) { value ->
+            if (acCodec.text.toString() != value) {
+                acCodec.setText(value, false)
+            }
+        }
+        acCodec.setOnClickListener {
+            val adapter = ArrayAdapter(requireContext(),
+                android.R.layout.simple_list_item_1,
+                codecOptions
+            )
+            acCodec.setAdapter(adapter)
+            acCodec.showDropDown()
+        }
+        vm.videoResolution.observe(viewLifecycleOwner) { value ->
+            if (acResolution.text.toString() != value) {
+                acResolution.setText(value, false)
+            }
+        }
+        // 3) Listener PARA CUANDO SE HAGA CLICK EN EL CAMPO
+        acResolution.setOnClickListener {
+            // 3.1) Reasigna un adapter fresco con todas las opciones
+            val adapter = ArrayAdapter(
+                requireContext(),
+                android.R.layout.simple_list_item_1,
+                resolutionOptions
+            )
+            acResolution.setAdapter(adapter)
+
+            // 3.2) Lanza el desplegable
+            acResolution.showDropDown()
+        }
+
+        // Video FPS
+        vm.videoFps.observe(viewLifecycleOwner) { value ->
+            val s = value.toString()
+            if (acFps.text.toString() != s) {
+                acFps.setText(s, false)
+            }
+        }
+        acFps.setOnClickListener {
+            val adapter = ArrayAdapter(requireContext(),
+                android.R.layout.simple_list_item_1,
+                fpsOptions
+            )
+            acFps.setAdapter(adapter)
+            acFps.showDropDown()
+        }
+        vm.videoBitrate.observe(viewLifecycleOwner)   { if (etVideoBitrate.text.toString() != it.toString()) etVideoBitrate.setText(it.toString()) }
+        // Record Resolution
+        vm.recordResolution.observe(viewLifecycleOwner) { value ->
+            if (acRecordResolution.text.toString() != value) {
+                acRecordResolution.setText(value, false)
+            }
+        }
+        acRecordResolution.setOnClickListener {
+            val adapter = ArrayAdapter(requireContext(),
+                android.R.layout.simple_list_item_1,
+                resolutionOptions
+            )
+            acRecordResolution.setAdapter(adapter)
+            acRecordResolution.showDropDown()
+        }
+        vm.recordBitrate.observe(viewLifecycleOwner)  { if (etRecordBitrate.text.toString() != it.toString()) etRecordBitrate.setText(it.toString()) }
+        // Audio Source
+        vm.audioSource.observe(viewLifecycleOwner) { value ->
+            if (acAudioSource.text.toString() != value) {
+                acAudioSource.setText(value, false)
+            }
+        }
+        acAudioSource.setOnClickListener {
+            val adapter = ArrayAdapter(requireContext(),
+                android.R.layout.simple_list_item_1,
+                audioSourceOptions
+            )
+            acAudioSource.setAdapter(adapter)
+            acAudioSource.showDropDown()
+        }
+        // Audio Bitrate
+        vm.audioBitrate.observe(viewLifecycleOwner) { value ->
+            val s = value.toString()
+            if (acAudioBitrate.text.toString() != s) {
+                acAudioBitrate.setText(s, false)
+            }
+        }
+        acAudioBitrate.setOnClickListener {
+            val adapter = ArrayAdapter(requireContext(),
+                android.R.layout.simple_list_item_1,
+                audioBitrateOptions
+            )
+            acAudioBitrate.setAdapter(adapter)
+            acAudioBitrate.showDropDown()
+        }
+
+        // 4) UI → VM
+        etConnUrl.doOnTextChanged    { t,_,_,_ -> vm.connectionUrl.value   = t.toString() }
+        etConnKey.doOnTextChanged    { t,_,_,_ -> vm.connectionKey.value   = t.toString() }
+        etConnAlias.doOnTextChanged  { t,_,_,_ -> vm.connectionAlias.value = t.toString() }
+        etProfileAlias.doOnTextChanged{ t,_,_,_ ->
+            val s = t?.toString() ?: ""
+            vm.profileAlias.value = s
+        }
+
+        acConn.setOnClickListener   { showConnDropdown() }
+        acConn.setOnTouchListener   { _, _ -> showConnDropdown(); false }
+        acVideoSource.setOnItemClickListener { _,_,pos,_ -> vm.videoSource.value = acVideoSource.adapter.getItem(pos) as String }
+        acCodec.setOnItemClickListener       { _,_,pos,_ -> vm.videoCodec.value  = acCodec.adapter.getItem(pos) as String }
+        acResolution.setOnItemClickListener  { _,_,pos,_ -> vm.videoResolution.value = acResolution.adapter.getItem(pos) as String }
+        acFps.setOnItemClickListener         { _,_,pos,_ -> vm.videoFps.value     = (acFps.adapter.getItem(pos) as String).toInt() }
+        acRecordResolution.setOnItemClickListener { _,_,pos,_ -> vm.recordResolution.value = acRecordResolution.adapter.getItem(pos) as String }
+        acAudioSource.setOnItemClickListener{ _,_,pos,_ -> vm.audioSource.value   = acAudioSource.adapter.getItem(pos) as String }
+        acAudioBitrate.setOnItemClickListener{ _,_,pos,_ -> vm.audioBitrate.value  = (acAudioBitrate.adapter.getItem(pos) as String).toInt() }
+
+        etVideoBitrate.doOnTextChanged { t,_,_,_ ->
+            vm.videoBitrate.value = t.toString().toIntOrNull() ?: 0
+        }
+        etRecordBitrate.doOnTextChanged { t,_,_,_ ->
+            vm.recordBitrate.value = t.toString().toIntOrNull() ?: 0
+        }
+
+//        // 4) VM → UI: rellenar los campos URL/Key/Alias al cambiar selección
+//        vm.selectedConnectionIndex.observe(viewLifecycleOwner) { idx ->
+//            val conns = vm.connections.value ?: emptyList()
+//            if (idx in conns.indices) {
+//                val c = conns[idx]
+//                etConnUrl.setText(c.url)
+//                etConnKey.setText(c.streamKey)
+//                etConnAlias.setText(c.alias)
+//                // También actualiza el campo de alias en el dropdown (para que muestre el texto correcto)
+//                acConn.setText(c.alias, false)
+//            } else {
+//                etConnUrl.text?.clear()
+//                etConnKey.text?.clear()
+//                etConnAlias.text?.clear()
+//                acConn.text?.clear()
+//            }
+//            btnUpdateConn.visibility = if (idx >= 0) VISIBLE else GONE
+//            btnDeleteConn.visibility = if (idx >= 0) VISIBLE else GONE
+//        }
+
+        // 5) Botón “Add Connection”
+        btnAddConn.setOnClickListener {
+            val url   = etConnUrl.text.toString().trim()
+            val key   = etConnKey.text.toString().trim()
+            val alias = etConnAlias.text.toString().trim()
             if (!url.startsWith("rtmp://") && !url.startsWith("rtmps://")) {
-                tilConnectionUrl.error = "Must start with rtmp:// or rtmps://"
+                tilConnUrl.error = "Must start with rtmp:// or rtmps://"
                 return@setOnClickListener
             }
-            tilConnectionUrl.error = null
-            connections.add(StreamConnection(url, key, alias))
-            updateDropdownAdapter()
-            tilConnectionDropdown.visibility = View.VISIBLE
-            clearConnectionFields()
+            tilConnUrl.error = null
+
+            // reasignamos lista en ViewModel
+            val newList = vm.connections.value!!.toMutableList().apply {
+                add(StreamConnection(url, key, alias))
+            }
+            vm.connections.value = newList
+
+            // volvemos a “None”
+            vm.selectedConnectionIndex.value = -1
+
+            // limpiar formulario
+            etConnUrl.text?.clear()
+            etConnKey.text?.clear()
+            etConnAlias.text?.clear()
         }
-        autoCompleteConnections.setOnItemClickListener { _, _, pos, _ ->
-            selectedConnectionIndex = pos
-            btnUpdateConnection.visibility = View.VISIBLE
-            btnDeleteConnection.visibility = View.VISIBLE
-            val c = connections[pos]
-            etConnectionUrl.setText(c.url)
-            etConnectionKey.setText(c.streamKey)
-            etConnectionAlias.setText(c.alias)
-        }
-        btnUpdateConnection.setOnClickListener {
-            if (selectedConnectionIndex >= 0) {
+
+        // 6) Botón “Update Connection”
+        btnUpdateConn.setOnClickListener {
+            vm.selectedConnectionIndex.value?.takeIf { it >= 0 }?.let { idx ->
                 val updated = StreamConnection(
-                    etConnectionUrl.text.toString().trim(),
-                    etConnectionKey.text.toString().trim(),
-                    etConnectionAlias.text.toString().trim()
+                    etConnUrl.text.toString().trim(),
+                    etConnKey.text.toString().trim(),
+                    etConnAlias.text.toString().trim()
                 )
-                connections[selectedConnectionIndex] = updated
-                updateDropdownAdapter()
-                autoCompleteConnections.setText(updated.alias, false)
-            }
-        }
-        btnDeleteConnection.setOnClickListener {
-            if (selectedConnectionIndex >= 0) {
-                connections.removeAt(selectedConnectionIndex)
-                updateDropdownAdapter()
-                selectedConnectionIndex = -1
-                autoCompleteConnections.setText("", false)
-                clearConnectionFields()
-                btnUpdateConnection.visibility = View.GONE
-                btnDeleteConnection.visibility = View.GONE
-                if (connections.isEmpty()) tilConnectionDropdown.visibility = View.GONE
+                val newList = vm.connections.value!!.toMutableList().apply {
+                    set(idx, updated)
+                }
+                vm.connections.value = newList
             }
         }
 
-        // 4) Enable Create only when alias entered
-        etConnectionAlias.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                btnCreateProfile.isEnabled = !s.isNullOrBlank()
+        // 7) Botón “Delete Connection”
+        btnDeleteConn.setOnClickListener {
+            vm.selectedConnectionIndex.value?.takeIf { it >= 0 }?.let { idx ->
+                // 1) Crea la nueva lista sin el elemento idx
+                val newList = vm.connections.value!!.toMutableList().apply {
+                    removeAt(idx)
+                }
+                // 2) Actualiza el ViewModel
+                vm.connections.value = newList
+                // 3) Fuerza “None” como seleccionado
+                vm.selectedConnectionIndex.value = -1
+                // 4) Y repuebla el adapter inmediatamente
+                refreshConnAdapter()
             }
-            override fun afterTextChanged(s: Editable?) {}
-        })
+        }
 
-        // 5) Create Profile via repository
+        // 5) Create / Update profile
         btnCreateProfile.setOnClickListener {
-            // 1) Recopilar datos del formulario
-            val alias = etProfileAlias.text.toString().trim()
-            val connectionsData = connections.map { conn ->
-                val clean = conn.url.trimEnd('/')
+            val alias = vm.profileAlias.value!!.trim()
+            val connectionsData = vm.connections.value!!.map { c ->
+                val clean = c.url.trimEnd('/')
                 hashMapOf(
-                    "rtmp_url"  to conn.url,
-                    "streamkey" to conn.streamKey,
-                    "alias"     to conn.alias,
-                    "full_url"  to "$clean/${conn.streamKey}"
+                    "rtmp_url"   to c.url,
+                    "streamkey"  to c.streamKey,
+                    "alias"      to c.alias,
+                    "full_url"   to "$clean/${c.streamKey}"
                 )
             }
             val videoMap = hashMapOf(
-                "source"      to autoCompleteVideoSource.text.toString(),
-                "codec"       to autoCompleteCodec.text.toString(),
-                "resolution"  to autoCompleteResolution.text.toString(),
-                "fps"         to autoCompleteFps.text.toString().toInt(),
-                "bitrateMbps" to etVideoBitrate.text.toString().toInt()
+                "source"      to vm.videoSource.value!!,
+                "codec"       to vm.videoCodec.value!!,
+                "resolution"  to vm.videoResolution.value!!,
+                "fps"         to vm.videoFps.value!!,
+                "bitrateMbps" to vm.videoBitrate.value!!
             )
             val recordMap = hashMapOf(
-                "resolution"  to autoCompleteRecordResolution.text.toString(),
-                "bitrateMbps" to etRecordBitrate.text.toString().toInt()
+                "resolution"  to vm.recordResolution.value!!,
+                "bitrateMbps" to vm.recordBitrate.value!!
             )
             val audioMap = hashMapOf(
-                "source"      to autoCompleteAudioSource.text.toString(),
-                "bitrateKbps" to autoCompleteAudioBitrate.text.toString().toInt()
+                "source"      to vm.audioSource.value!!,
+                "bitrateKbps" to vm.audioBitrate.value!!
             )
+
+            val selectedAlias = vm.selectedConnectionIndex.value
+                ?.takeIf { it >= 0 }
+                ?.let { vm.connections.value!![it].alias }
+                ?: "None"
+
+
             val profileData = hashMapOf(
                 "alias"           to alias,
                 "connections"     to connectionsData,
                 "videoSettings"   to videoMap,
                 "recordSettings"  to recordMap,
-                "audioSettings"   to audioMap
+                "audioSettings"   to audioMap,
+                "selectedConnectionAlias"  to selectedAlias
             )
 
-            if (editingProfileId != null) {
-                // UPDATE
-                progressBar.visibility = View.VISIBLE
-                repo.updateProfile(editingProfileId!!, profileData, object : SettingsProfileRepository.UpdateCallback {
+            progressBar.visibility = VISIBLE
+            val id = vm.editingProfileId.value
+            if (vm.isUpdateMode.value == true && id != null) {
+                // MODO UPDATE
+                repo.updateProfile(id, profileData, object: SettingsProfileRepository.UpdateCallback {
                     override fun onSuccess() {
-                        progressBar.visibility = View.GONE
+                        progressBar.visibility = GONE
                         Snackbar.make(requireView(), "Profile Updated", Snackbar.LENGTH_SHORT).show()
+                        // Restablecemos el modo para la próxima vez
+                        vm.isUpdateMode.value     = false
+                        vm.editingProfileId.value = null
                         finishAndReload()
-                        editingProfileId = null
-                        btnCreateProfile.text = "Create Profile"
                     }
                     override fun onFailure(e: Exception) {
-                        progressBar.visibility = View.GONE
-                        Snackbar.make(requireView(), "Update Profile Error: ${e.message}", Snackbar.LENGTH_LONG).show()
+                        progressBar.visibility = GONE
+                        Snackbar.make(requireView(), "Update Error: ${e.message}", Snackbar.LENGTH_LONG).show()
                     }
                 })
             } else {
-                // CREATE
-                progressBar.visibility = View.VISIBLE
-                repo.createProfile(profileData, object : SettingsProfileRepository.CreateCallback {
+                // MODO CREATE
+                repo.createProfile(profileData, object: SettingsProfileRepository.CreateCallback {
                     override fun onSuccess(docId: String) {
-                        progressBar.visibility = View.GONE
+                        progressBar.visibility = GONE
                         Snackbar.make(requireView(), "Profile Created", Snackbar.LENGTH_SHORT).show()
                         finishAndReload()
                     }
                     override fun onFailure(e: Exception) {
-                        progressBar.visibility = View.GONE
-                        Snackbar.make(requireView(), "Create Profile Error: ${e.message}", Snackbar.LENGTH_LONG).show()
+                        progressBar.visibility = GONE
+                        Snackbar.make(requireView(), "Create Error: ${e.message}", Snackbar.LENGTH_LONG).show()
                     }
                 })
             }
@@ -318,55 +540,75 @@ class StreamSettingsFragment : Fragment(R.layout.fragment_stream_settings) {
 
         // 6) Other listeners
         btnClose.setOnClickListener { parentFragmentManager.popBackStack() }
-        btnAddCenter.setOnClickListener { showForm() }
-        btnAddBelow.setOnClickListener { showForm() }
+        btnAddCenter.setOnClickListener {
+            vm.isFormVisible.value = true
+            resetForm()
+        }
+        btnAddBelow.setOnClickListener {
+            vm.isFormVisible.value = true
+            vm.isUpdateMode.value = false
+            vm.editingProfileId.value = null
+            resetForm()
+        }
 
-        progressBar.visibility = View.VISIBLE
-        scrollContainer.visibility      = View.GONE
-        profileListContainer.visibility = View.GONE
-
-        // 7) Load existing
+        // 7) Initial load
+        progressBar.visibility = VISIBLE
         repo.fetchProfiles(object: SettingsProfileRepository.FetchCallback {
             override fun onEmpty() {
-                progressBar.visibility = View.GONE
-                btnAddCenter.visibility = View.VISIBLE
+                progressBar.visibility = GONE
                 showEmptyState()
             }
             override fun onError(e: Exception) {
-                progressBar.visibility = View.GONE
+                progressBar.visibility = GONE
                 showEmptyState()
             }
             override fun onLoaded(profiles: List<SettingsProfile>) {
-                progressBar.visibility = View.GONE
-                showProfiles(profiles)
+                progressBar.visibility = GONE
+                if (vm.isFormVisible.value != true) {
+                    showProfiles(profiles)
+                }
             }
         })
     }
 
-    private fun updateDropdownAdapter() {
-        connectionsAdapter.clear()
-        connectionsAdapter.addAll(connections.map { it.alias })
-        connectionsAdapter.notifyDataSetChanged()
+    private fun showForm() {
+        resetForm()
+        btnAddCenter.visibility    = GONE
+        btnAddBelow.visibility     = GONE
+        scrollContainer.visibility = VISIBLE
+        profileForm.visibility     = VISIBLE
+        profileListContainer.visibility = GONE
     }
 
-    private fun clearConnectionFields() {
-        etConnectionUrl.text?.clear()
-        etConnectionKey.text?.clear()
-        etConnectionAlias.text?.clear()
+    private fun resetForm() {
+        vm.profileAlias.value             = ""
+        vm.connections.value              = mutableListOf()
+        vm.selectedConnectionIndex.value  = -1
+        vm.connectionUrl.value            = ""
+        vm.connectionKey.value            = ""
+        vm.connectionAlias.value          = ""
+        vm.videoSource.value              = "Device Camera"
+        vm.videoCodec.value               = "H264"
+        vm.videoResolution.value          = "1080p"
+        vm.videoFps.value                 = 30
+        vm.videoBitrate.value             = 5
+        vm.recordResolution.value         = "1080p"
+        vm.recordBitrate.value            = 5
+        vm.audioSource.value              = "Device Audio"
+        vm.audioBitrate.value             = 160
     }
 
     private fun showEmptyState() {
-        btnAddCenter.visibility    = View.VISIBLE
-        scrollContainer.visibility = View.GONE
+        btnAddCenter.visibility    = VISIBLE
+        scrollContainer.visibility = GONE
     }
 
     private fun showProfiles(profiles: List<SettingsProfile>) {
-        btnAddCenter.visibility = View.GONE
+        btnAddCenter.visibility = GONE
         profileListContainer.removeAllViews()
-        profileListContainer.visibility = View.VISIBLE
-        scrollContainer.visibility = View.VISIBLE
+        profileListContainer.visibility = VISIBLE
+        scrollContainer.visibility      = VISIBLE
 
-        // Colores
         val defaultColor = ContextCompat.getColor(requireContext(), R.color.gray)
         val selectedColor = ContextCompat.getColor(requireContext(), R.color.calypso_red)
 
@@ -415,7 +657,7 @@ class StreamSettingsFragment : Fragment(R.layout.fragment_stream_settings) {
             val buttonLayout = LinearLayout(requireContext()).apply {
                 orientation = LinearLayout.HORIZONTAL
                 weightSum = 3f
-                visibility = View.GONE
+                visibility = GONE
             }
 
             listOf("Load", "Edit", "Delete").forEach { text ->
@@ -429,54 +671,81 @@ class StreamSettingsFragment : Fragment(R.layout.fragment_stream_settings) {
                     }
                     this.text = text
                     isAllCaps = false
-                    backgroundTintList = ContextCompat.getColorStateList(
-                        requireContext(),
-                        R.color.secondary_button
-                    )
-                    setTextColor(ContextCompat.getColor(requireContext(), android.R.color.white))
                 }
 
                 when (text) {
-                    "Delete" -> {
-                        btn.setOnClickListener {
-                            progressBar.visibility = View.VISIBLE
-                            repo.deleteProfile(profile.id, object : SettingsProfileRepository.DeleteCallback {
-                                override fun onSuccess() {
-                                    progressBar.visibility = View.GONE
-                                    Snackbar.make(requireView(), "Profile Deleted", Snackbar.LENGTH_SHORT).show()
-                                    finishAndReload()
-                                }
-                                override fun onFailure(e: Exception) {
-                                    progressBar.visibility = View.GONE
-                                    Snackbar.make(requireView(), "Delete Profile Error", Snackbar.LENGTH_LONG).show()
-                                }
-                            })
+                    "Load" -> btn.setOnClickListener {
+                        repo.fetchProfileById(profile.id) { data, error ->
+                            data?.let { map ->
+                                val alias = map["alias"] as? String ?: "Unknown"
+                                // conexiones + alias seleccionado
+                                val conns = (map["connections"] as? List<Map<String,Any>>)
+                                    ?.map { StreamConnection(
+                                        it["rtmp_url"]   as String,
+                                        it["streamkey"]  as String,
+                                        it["alias"]      as String
+                                    ) } ?: emptyList()
+                                val selectedAlias = (map["selectedConnectionAlias"] as? String)
+                                    ?: "None"
+
+                                // video
+                                val vs = (map["videoSettings"]   as Map<String,Any>)
+                                val vSource = vs["source"]      as String
+                                val vCodec  = vs["codec"]       as String
+                                val vRes    = vs["resolution"]  as String
+                                val vFps    = (vs["fps"]        as Number).toInt()
+                                val vBr     = (vs["bitrateMbps"]as Number).toInt()
+
+                                // record
+                                val rs   = (map["recordSettings"]  as Map<String,Any>)
+                                val rRes = rs["resolution"]  as String
+                                val rBr  = (rs["bitrateMbps"]as Number).toInt()
+
+                                // audio
+                                val aus    = (map["audioSettings"]  as Map<String,Any>)
+                                val aSource = aus["source"]     as String
+                                val aBr     = (aus["bitrateKbps"]as Number).toInt()
+
+                                Log.d("StreamSettings", """
+                ── Load Profile ─────────────────────────────────────
+                alias=$alias
+                selectedConnection=$selectedAlias
+                video:   source=$vSource, codec=$vCodec, res=$vRes, fps=$vFps, br(Mbps)=$vBr
+                record:  res=$rRes, br(Mbps)=$rBr
+                audio:   source=$aSource, br(Kbps)=$aBr
+                ────────────────────────────────────────────────────
+            """.trimIndent())
+                            } ?: run {
+                                Log.e("StreamSettings", "Error cargando perfil ${profile.id}: $error")
+                            }
                         }
                     }
-                    "Load" -> {
-                        btn.setOnClickListener {
-                            // TODO: tu lógica de carga si la necesitas
-                        }
+                    "Delete" -> btn.setOnClickListener {
+                        progressBar.visibility = VISIBLE
+                        repo.deleteProfile(profile.id, object : SettingsProfileRepository.DeleteCallback {
+                            override fun onSuccess() {
+                                progressBar.visibility = GONE
+                                Snackbar.make(requireView(), "Profile Deleted", Snackbar.LENGTH_SHORT).show()
+                                finishAndReload()
+                            }
+                            override fun onFailure(e: Exception) {
+                                progressBar.visibility = GONE
+                                Snackbar.make(requireView(), "Delete Error", Snackbar.LENGTH_LONG).show()
+                            }
+                        })
                     }
-                    "Edit" -> {
-                        // dentro de showProfiles(), en el case "Edit"…
-                        btn.setOnClickListener {
-                            // 1) Guardamos el ID que vamos a editar
-                            editingProfileId = profile.id
-                            // 2) Cambiamos el texto del botón final
-                            btnCreateProfile.text = "Update Profile"
-                            // 3) Mostramos el formulario vacío
-                            showForm()
-                            // 4) Llamamos a Firestore para rellenar cada campo
-                            repo.fetchProfileById(profile.id) { data, error ->
-                                if (error != null || data == null) {
-                                    Toast.makeText(requireContext(),
-                                        "Error cargando perfil para editar",
-                                        Toast.LENGTH_SHORT).show()
-                                    return@fetchProfileById
-                                }
+                    "Edit" -> btn.setOnClickListener {
+//                        editingProfileId = profile.id
+//                        btnCreateProfile.text = "Update Profile"
+                        vm.editingProfileId.value = profile.id
+                        vm.isUpdateMode.value     = true
+                        vm.isFormVisible.value    = true
+                        showForm()
+
+                        repo.fetchProfileById(profile.id) { data, error ->
+                            if (data != null) {
                                 // Profile Name
-                                etProfileAlias.setText(data["alias"] as? String ?: "")
+                                vm.profileAlias.value = data["alias"] as? String ?: ""
 
                                 // Conexiones
                                 val conns = (data["connections"] as? List<Map<String, Any>>)?.map {
@@ -486,29 +755,27 @@ class StreamSettingsFragment : Fragment(R.layout.fragment_stream_settings) {
                                         alias     = it["alias"] as String
                                     )
                                 } ?: emptyList()
-                                connections.clear()
-                                connections.addAll(conns)
-                                updateDropdownAdapter()
-                                tilConnectionDropdown.visibility = if (conns.isNotEmpty()) View.VISIBLE else View.GONE
-                                if (conns.isNotEmpty()) autoCompleteConnections.setText(conns[0].alias, false)
 
-                                // Video Settings
-                                val video = data["videoSettings"] as? Map<String, Any> ?: emptyMap()
-                                autoCompleteVideoSource.setText(video["source"] as? String ?: "", false)
-                                autoCompleteCodec.setText(video["codec"] as? String ?: "", false)
-                                autoCompleteResolution.setText(video["resolution"] as? String ?: "", false)
-                                autoCompleteFps.setText((video["fps"] as? Number)?.toString() ?: "", false)
-                                etVideoBitrate.setText((video["bitrateMbps"] as? Number)?.toString() ?: "")
+                                // 1) Rellena la lista
+                                vm.connections.value = conns.toMutableList()
 
-                                // Record Settings
-                                val record = data["recordSettings"] as? Map<String, Any> ?: emptyMap()
-                                autoCompleteRecordResolution.setText(record["resolution"] as? String ?: "", false)
-                                etRecordBitrate.setText((record["bitrateMbps"] as? Number)?.toString() ?: "")
+                                // lee el alias guardado:
+                                val savedAlias = (data["selectedConnectionAlias"] as? String) ?: "None"
+                                // busca su índice en tu lista recién cargada:
+                                val idx = conns.indexOfFirst { it.alias == savedAlias }
+                                // aplica la selección (−1 = “None”)
+                                vm.selectedConnectionIndex.value = if (idx >= 0) idx else -1
 
-                                // Audio Settings
-                                val audio = data["audioSettings"] as? Map<String, Any> ?: emptyMap()
-                                autoCompleteAudioSource.setText(audio["source"] as? String ?: "", false)
-                                autoCompleteAudioBitrate.setText((audio["bitrateKbps"] as? Number)?.toString() ?: "", false)
+                                // Resto de settings...
+                                vm.videoSource.value     = (data["videoSettings"] as Map<*,*>)["source"]    as String
+                                vm.videoCodec.value      = (data["videoSettings"] as Map<*,*>)["codec"]     as String
+                                vm.videoResolution.value = (data["videoSettings"] as Map<*,*>)["resolution"]as String
+                                vm.videoFps.value        = ((data["videoSettings"] as Map<*,*>)["fps"]      as Number).toInt()
+                                vm.videoBitrate.value    = ((data["videoSettings"] as Map<*,*>)["bitrateMbps"] as Number).toInt()
+                                vm.recordResolution.value= (data["recordSettings"] as Map<*,*>)["resolution"] as String
+                                vm.recordBitrate.value   = ((data["recordSettings"] as Map<*,*>)["bitrateMbps"] as Number).toInt()
+                                vm.audioSource.value     = (data["audioSettings"] as Map<*,*>)["source"] as String
+                                vm.audioBitrate.value    = ((data["audioSettings"] as Map<*,*>)["bitrateKbps"] as Number).toInt()
                             }
                         }
                     }
@@ -528,86 +795,40 @@ class StreamSettingsFragment : Fragment(R.layout.fragment_stream_settings) {
                     val btnRow = ll.getChildAt(ll.childCount - 1) as LinearLayout
                     if (i == index) {
                         cv.setCardBackgroundColor(selectedColor)
-                        btnRow.visibility = View.VISIBLE
+                        btnRow.visibility = VISIBLE
                     } else {
                         cv.setCardBackgroundColor(defaultColor)
-                        btnRow.visibility = View.GONE
+                        btnRow.visibility = GONE
                     }
                 }
             }
         }
 
-        btnAddBelow.visibility = View.VISIBLE
-    }
-
-
-
-    private fun showForm() {
-        resetForm()
-
-        btnAddCenter.visibility         = View.GONE
-        btnAddBelow.visibility          = View.GONE
-        scrollContainer.visibility      = View.VISIBLE
-        profileForm.visibility          = View.VISIBLE
-        profileListContainer.visibility = View.GONE
-    }
-
-    private fun resetForm() {
-        // Limpiar Profile Name
-        etProfileAlias.text?.clear()
-        isAliasValid = false
-        btnCreateProfile.alpha = 0.5f
-
-        // Limpiar conexiones
-        connections.clear()
-        updateDropdownAdapter()
-        tilConnectionDropdown.visibility = View.GONE
-        btnUpdateConnection.visibility = View.GONE
-        btnDeleteConnection.visibility = View.GONE
-        clearConnectionFields()
-
-        // Reset Video Settings
-        autoCompleteVideoSource.setText("Device Camera", false)
-        autoCompleteResolution.setText("1080p", false)
-        autoCompleteRecordResolution.setText("1080p", false)
-        autoCompleteFps.setText("30", false)
-        etVideoBitrate.setText("5")
-
-        // Reset Record Settings
-        autoCompleteRecordResolution.setText("1080p", false)
-        etRecordBitrate.setText("5")
-
-        // Reset Audio Settings
-        autoCompleteAudioSource.setText("Device Audio", false)
-        autoCompleteAudioBitrate.setText("160", false)
+        btnAddBelow.visibility = VISIBLE
     }
 
     private fun finishAndReload() {
-        // 1) Oculta el formulario y los botones de “Add”
-        profileForm.visibility  = View.GONE
-        btnAddBelow.visibility  = View.GONE
-        btnAddCenter.visibility = View.GONE
+        vm.isFormVisible.value = false
+        profileForm.visibility  = GONE
+        btnAddBelow.visibility  = GONE
+        btnAddCenter.visibility = GONE
+        progressBar.visibility  = VISIBLE
+        scrollContainer.visibility      = VISIBLE
+        profileListContainer.visibility = VISIBLE
 
-        progressBar.visibility = View.VISIBLE
-
-        // 2) Muestra la lista de cards
-        scrollContainer.visibility      = View.VISIBLE
-        profileListContainer.visibility = View.VISIBLE
-        // 3) Recarga la lista desde Firestore
         repo.fetchProfiles(object: SettingsProfileRepository.FetchCallback {
             override fun onEmpty() {
-                progressBar.visibility = View.GONE
+                progressBar.visibility = GONE
                 showEmptyState()
             }
             override fun onError(e: Exception) {
-                progressBar.visibility = View.GONE
+                progressBar.visibility = GONE
                 showEmptyState()
             }
             override fun onLoaded(profiles: List<SettingsProfile>) {
-                progressBar.visibility = View.GONE
+                progressBar.visibility = GONE
                 showProfiles(profiles)
             }
         })
     }
 }
-
