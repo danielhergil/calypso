@@ -6,6 +6,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import com.danihg.calypso.data.Event
+import com.danihg.calypso.data.StreamProfile
 import com.pedro.common.ConnectChecker
 import com.pedro.encoder.input.sources.audio.MicrophoneSource
 import com.pedro.library.generic.GenericStream
@@ -37,4 +39,22 @@ class CameraViewModel(
     override fun onDisconnect() = Unit
     override fun onAuthError() = Unit
     override fun onAuthSuccess() = Unit
+
+    /** LOAD PROFILE **/
+
+    private val _loadProfileEvent = MutableLiveData<Event<StreamProfile>>()
+    val loadProfileEvent: LiveData<Event<StreamProfile>> = _loadProfileEvent
+
+    fun requestLoadProfile(profile: StreamProfile) {
+        _loadProfileEvent.value = Event(profile)
+    }
+
+    /** SET RTMP URL **/
+
+    private val _streamUrl = MutableLiveData("None")
+    val streamUrl: LiveData<String> = _streamUrl
+
+    fun setStreamUrl(url: String) {
+        _streamUrl.value = url
+    }
 }

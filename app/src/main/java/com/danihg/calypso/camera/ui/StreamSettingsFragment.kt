@@ -19,21 +19,31 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.children
 import androidx.core.widget.doOnTextChanged
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
 import com.danihg.calypso.R
+import com.danihg.calypso.camera.CameraViewModel
+import com.danihg.calypso.data.AudioSourceType
 import com.danihg.calypso.data.SettingsProfile
 import com.danihg.calypso.models.StreamSettingsViewModel
 import com.danihg.calypso.data.SettingsProfileRepository
 import com.danihg.calypso.data.StreamConnection
+import com.danihg.calypso.data.StreamProfile
+import com.danihg.calypso.data.VideoSourceType
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
+import com.pedro.common.VideoCodec
+import com.pedro.encoder.input.sources.video.Camera2Source
 
 class StreamSettingsFragment : Fragment(R.layout.fragment_stream_settings) {
 
     private val repo = SettingsProfileRepository()
     private val vm   by viewModels<StreamSettingsViewModel>()
+
+    private val cameraViewModel: CameraViewModel by activityViewModels()
+    private val genericStream get() = cameraViewModel.genericStream
 
     // Views
     private lateinit var progressBar: ProgressBar
@@ -384,26 +394,6 @@ class StreamSettingsFragment : Fragment(R.layout.fragment_stream_settings) {
             vm.recordBitrate.value = t.toString().toIntOrNull() ?: 0
         }
 
-//        // 4) VM → UI: rellenar los campos URL/Key/Alias al cambiar selección
-//        vm.selectedConnectionIndex.observe(viewLifecycleOwner) { idx ->
-//            val conns = vm.connections.value ?: emptyList()
-//            if (idx in conns.indices) {
-//                val c = conns[idx]
-//                etConnUrl.setText(c.url)
-//                etConnKey.setText(c.streamKey)
-//                etConnAlias.setText(c.alias)
-//                // También actualiza el campo de alias en el dropdown (para que muestre el texto correcto)
-//                acConn.setText(c.alias, false)
-//            } else {
-//                etConnUrl.text?.clear()
-//                etConnKey.text?.clear()
-//                etConnAlias.text?.clear()
-//                acConn.text?.clear()
-//            }
-//            btnUpdateConn.visibility = if (idx >= 0) VISIBLE else GONE
-//            btnDeleteConn.visibility = if (idx >= 0) VISIBLE else GONE
-//        }
-
         // 5) Botón “Add Connection”
         btnAddConn.setOnClickListener {
             val url   = etConnUrl.text.toString().trim()
@@ -556,17 +546,15 @@ class StreamSettingsFragment : Fragment(R.layout.fragment_stream_settings) {
         repo.fetchProfiles(object: SettingsProfileRepository.FetchCallback {
             override fun onEmpty() {
                 progressBar.visibility = GONE
-                showEmptyState()
+                if (vm.isFormVisible.value != true) showEmptyState()
             }
             override fun onError(e: Exception) {
                 progressBar.visibility = GONE
-                showEmptyState()
+                if (vm.isFormVisible.value != true) showEmptyState()
             }
             override fun onLoaded(profiles: List<SettingsProfile>) {
                 progressBar.visibility = GONE
-                if (vm.isFormVisible.value != true) {
-                    showProfiles(profiles)
-                }
+                if (vm.isFormVisible.value != true) showProfiles(profiles)
             }
         })
     }
@@ -719,6 +707,62 @@ class StreamSettingsFragment : Fragment(R.layout.fragment_stream_settings) {
                 audio:   source=$aSource, br(Kbps)=$aBr
                 ────────────────────────────────────────────────────
             """.trimIndent())
+                                val (streamWidth, streamHeight) = when (vRes) {
+                                    "720p"  -> 1280 to 720
+                                    "1080p" -> 1920 to 1080
+                                    else    -> 2560 to 1440
+                                }
+
+                                val (recordWidth, recordHeight) = when (rRes) {
+                                    "720p"  -> 1280 to 720
+                                    "1080p" -> 1920 to 1080
+                                    else    -> 2560 to 1440
+                                }
+
+                                val videoCodec = when (vCodec) {
+                                    "H264" -> VideoCodec.H264
+                                    else -> VideoCodec.H265
+                                }
+
+                                val videoSourceType = when (vSource) {
+                                    "Device Camera" -> VideoSourceType.DEVICE_CAMERA
+                                    "USB Camera"    -> VideoSourceType.USB_CAMERA
+                                    else            -> throw IllegalArgumentException("Unknown source")
+                                }
+
+                                val audioSourceType = when (aSource) {
+                                    "Device Audio" -> AudioSourceType.DEVICE_AUDIO
+                                    "Microphone"   -> AudioSourceType.MICROPHONE
+                                    else           -> throw IllegalArgumentException("Unknown source")
+                                }
+
+                                val rtmpUrl = conns
+                                    .firstOrNull { it.alias == selectedAlias }
+                                    ?.let {
+                                        val clean = it.url.trimEnd('/')
+                                        "$clean/${it.streamKey}"
+                                    } ?: ""
+
+                                val streamProfile = StreamProfile(
+                                    streamWidth   = streamWidth,
+                                    streamHeight  = streamHeight,
+                                    videoBitrate  = vBr * 1_000_000,      // de Mbps a bps
+                                    videoFps      = vFps,
+                                    videoCodec    = videoCodec,
+                                    videoSource   = videoSourceType,
+                                    audioBitrate  = aBr * 1_000,          // de Kbps a bps
+                                    audioSource   = audioSourceType,
+                                    recordWidth   = recordWidth,
+                                    recordHeight  = recordHeight,
+                                    recordBitrate = rBr * 1_000_000,      // de Mbps a bps
+                                    rtmpUrl       = rtmpUrl
+                                )
+
+                                cameraViewModel.requestLoadProfile(streamProfile)
+                                cameraViewModel.setStreamUrl(streamProfile.rtmpUrl)
+
+                                parentFragmentManager.popBackStack()
+
                             } ?: run {
                                 Log.e("StreamSettings", "Error cargando perfil ${profile.id}: $error")
                             }
@@ -823,15 +867,21 @@ class StreamSettingsFragment : Fragment(R.layout.fragment_stream_settings) {
         repo.fetchProfiles(object: SettingsProfileRepository.FetchCallback {
             override fun onEmpty() {
                 progressBar.visibility = GONE
-                showEmptyState()
+                if (vm.isFormVisible.value != true) {
+                    showEmptyState()
+                }
             }
             override fun onError(e: Exception) {
                 progressBar.visibility = GONE
-                showEmptyState()
+                if (vm.isFormVisible.value != true) {
+                    showEmptyState()
+                }
             }
             override fun onLoaded(profiles: List<SettingsProfile>) {
                 progressBar.visibility = GONE
-                showProfiles(profiles)
+                if (vm.isFormVisible.value != true) {
+                    showProfiles(profiles)
+                }
             }
         })
     }
