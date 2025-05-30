@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Espacio entre cards -->
+    <dimen name="padding_small">8dp</dimen>
+    <!-- Radio de las esquinas de cada card -->
+    <dimen name="card_corner_radius">8dp</dimen>
+    <!-- Elevación de cada card -->
+    <dimen name="card_elevation">4dp</dimen>
+    <!-- Padding de cada card -->
+    <dimen name="padding_medium">10dp</dimen>
+    <!-- Padding de cada card -->
+    <dimen name="padding_medium_left">12dp</dimen>
+</resources>

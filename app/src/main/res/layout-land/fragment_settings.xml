@@ -6,12 +6,12 @@
 
     <LinearLayout
         android:id="@+id/settings_menu"
-        android:orientation="vertical"
+        android:orientation="horizontal"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom|start"
-        android:layout_marginStart="26dp"
-        android:layout_marginBottom="80dp">
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="96dp"
+        android:layout_marginBottom="40dp">
 
         <!-- Botón para cámara (oculto al inicio) -->
         <com.google.android.material.button.MaterialButton
@@ -20,7 +20,7 @@
             android:layout_width="56dp"
             android:layout_height="56dp"
             android:visibility="gone"
-            android:layout_marginBottom="8dp"
+            android:layout_marginEnd="8dp"
             android:alpha="0.8"
             app:icon="@drawable/ic_settings_camera"
             app:iconSize="34dp"
@@ -36,7 +36,7 @@
             android:layout_width="56dp"
             android:layout_height="56dp"
             android:visibility="gone"
-            android:layout_marginBottom="8dp"
+            android:layout_marginEnd="8dp"
             android:alpha="0.8"
             app:icon="@drawable/ic_settings_stream"
             app:iconSize="34dp"

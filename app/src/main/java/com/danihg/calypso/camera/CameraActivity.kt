@@ -15,19 +15,15 @@ class CameraActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_camera)
+        enterImmersiveMode()
 
-        // 2) Launch your CameraFragment exactly once
         if (savedInstanceState == null) {
-            val fragment = CameraFragment.newInstance()
             supportFragmentManager.beginTransaction()
                 .replace(R.id.camera_container, CameraFragment.newInstance())
                 .replace(R.id.controls_container, CameraControlsFragment())
                 .replace(R.id.settings_container, SettingsFragment())
                 .commit()
         }
-
-        // 3) Enter immersive mode (keep your existing code)
-        enterImmersiveMode()
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {

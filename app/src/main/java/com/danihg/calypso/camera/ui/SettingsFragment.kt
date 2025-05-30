@@ -1,19 +1,49 @@
 package com.danihg.calypso.camera.ui
 
 import android.os.Bundle
+import android.util.Log
 import android.view.View
+import androidx.core.view.isGone
 import androidx.fragment.app.Fragment
 import com.danihg.calypso.R
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 class SettingsFragment : Fragment(R.layout.fragment_settings) {
+
+    private lateinit var btnSettings: MaterialButton
+    private lateinit var btnSettingsStream: MaterialButton
+    private lateinit var btnSettingsCamera: MaterialButton
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // THIS must be `view.findViewById` — not activity.findViewById
-        val btnSettings = view.findViewById<MaterialButton>(R.id.btnSettings)
+        btnSettings       = view.findViewById(R.id.btnSettings)
+        btnSettingsStream = view.findViewById(R.id.btnSettingsStream)
+        btnSettingsCamera = view.findViewById(R.id.btnSettingsCamera)
+
         btnSettings.setOnClickListener {
-            // toggle your sub-buttons here…
+            // Alterna la visibilidad de los dos botones adicionales
+            val nextVisibility = if (btnSettingsStream.isGone) View.VISIBLE else View.GONE
+            btnSettingsStream.visibility = nextVisibility
+            btnSettingsCamera.visibility = nextVisibility
+
+            // (Opcional) Animación sencilla
+            if (nextVisibility == View.VISIBLE) {
+                btnSettingsStream.animate().alpha(1f).setDuration(200).start()
+                btnSettingsCamera.animate().alpha(1f).setDuration(200).start()
+            }
+        }
+
+        // Listeners para los botones adicionales
+        btnSettingsStream.setOnClickListener {
+            parentFragmentManager.beginTransaction()
+                .replace(R.id.settings_container, StreamSettingsFragment())
+                .addToBackStack(null)
+                .commit()
+        }
+        btnSettingsCamera.setOnClickListener {
+            // TODO: tu lógica para ajustes de cámara
         }
     }
 }

@@ -33,29 +33,19 @@ class CameraControlsFragment : Fragment(R.layout.fragment_camera_controls) {
         btnStream  = view.findViewById(R.id.btnStreamMode)
         btnPicture = view.findViewById(R.id.btnPictureMode)
 
-        // === 1) SYNC BUTTON STATES WITH STREAM & RECORD FLAGS ===
-        genericStream.let { stream ->
-            // Stream button state
-            if (stream.isStreaming) {
-                btnStream.setIconResource(R.drawable.ic_stop)
-                btnStream.iconTint = ColorStateList.valueOf(
-                    ContextCompat.getColor(requireContext(), R.color.calypso_red)
-                )
-            } else {
-                btnStream.setIconResource(R.drawable.ic_stream_mode)
-                btnStream.iconTint = null
-            }
-            // Record button state
-            if (stream.isRecording) {
-                btnRecord.setIconResource(R.drawable.ic_stop)
-                btnRecord.iconTint = ColorStateList.valueOf(
-                    ContextCompat.getColor(requireContext(), R.color.calypso_red)
-                )
-            } else {
-                btnRecord.setIconResource(R.drawable.ic_record_mode)
-                btnRecord.iconTint = null
-            }
+        btnStream.isEnabled = false
+        btnStream.alpha     = 0.4f
+
+        var currentStreamUrl: String = ""
+        cameraViewModel.streamUrl.observe(viewLifecycleOwner) { url ->
+            currentStreamUrl = url
+            val isValid = url.isNotBlank() && url != "None"
+            btnStream.isEnabled = isValid
+            // bajamos opacity si está deshabilitado
+            btnStream.alpha = if (isValid) 1f else 0.4f
         }
+
+        syncButtonStates()
 
         // === 2) RECORD button toggles recording ===
         btnRecord.setOnClickListener {
@@ -89,20 +79,33 @@ class CameraControlsFragment : Fragment(R.layout.fragment_camera_controls) {
 
         // === 3) STREAM button toggles streaming ===
         btnStream.setOnClickListener {
-            val stream = genericStream
-
-            if (!stream.isStreaming) {
+//            val stream = genericStream
+//
+//            if (!stream.isStreaming) {
+//                sessionId = StorageUtils.generateSessionId()
+//                stream.startStream("rtmp://a.rtmp.youtube.com/live2/j2sh-690b-fg9y-2fah-7444")
+//                btnStream.setIconResource(R.drawable.ic_stop)
+//                btnStream.iconTint = ColorStateList.valueOf(
+//                    ContextCompat.getColor(requireContext(), R.color.calypso_red)
+//                )
+//            } else {
+//                stream.stopStream()
+//                btnStream.setIconResource(R.drawable.ic_stream_mode)
+//                btnStream.iconTint = null
+//                sessionId = null
+//            }
+            if (genericStream.isStreaming) {
+                genericStream.stopStream()
+                btnStream.setIconResource(R.drawable.ic_stream_mode)
+                btnStream.iconTint = null
+                sessionId = null
+            } else {
                 sessionId = StorageUtils.generateSessionId()
-                stream.startStream("rtmp://a.rtmp.youtube.com/live2/j2sh-690b-fg9y-2fah-7444")
+                genericStream.startStream(currentStreamUrl)
                 btnStream.setIconResource(R.drawable.ic_stop)
                 btnStream.iconTint = ColorStateList.valueOf(
                     ContextCompat.getColor(requireContext(), R.color.calypso_red)
                 )
-            } else {
-                stream.stopStream()
-                btnStream.setIconResource(R.drawable.ic_stream_mode)
-                btnStream.iconTint = null
-                sessionId = null
             }
         }
 
@@ -112,4 +115,31 @@ class CameraControlsFragment : Fragment(R.layout.fragment_camera_controls) {
             // TODO: implement still‐capture via genericStream or GL snapshot
         }
     }
+
+    private fun syncButtonStates() {
+        // === 1) SYNC BUTTON STATES WITH STREAM & RECORD FLAGS ===
+        genericStream.let { stream ->
+            // Stream button state
+            if (stream.isStreaming) {
+                btnStream.setIconResource(R.drawable.ic_stop)
+                btnStream.iconTint = ColorStateList.valueOf(
+                    ContextCompat.getColor(requireContext(), R.color.calypso_red)
+                )
+            } else {
+                btnStream.setIconResource(R.drawable.ic_stream_mode)
+                btnStream.iconTint = null
+            }
+            // Record button state
+            if (stream.isRecording) {
+                btnRecord.setIconResource(R.drawable.ic_stop)
+                btnRecord.iconTint = ColorStateList.valueOf(
+                    ContextCompat.getColor(requireContext(), R.color.calypso_red)
+                )
+            } else {
+                btnRecord.setIconResource(R.drawable.ic_record_mode)
+                btnRecord.iconTint = null
+            }
+        }
+    }
 }
+
