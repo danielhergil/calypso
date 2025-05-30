@@ -131,22 +131,16 @@ class StreamSettingsFragment : Fragment(R.layout.fragment_stream_settings) {
 
         // Observamos el flag y aplicamos UI:
         vm.isFormVisible.observe(viewLifecycleOwner) { formVisible ->
-            // 1) aseguramos que el contenedor general esté visible
-            scrollContainer.visibility = VISIBLE
+            if (progressBar.visibility == VISIBLE) return@observe
 
+            scrollContainer.visibility = VISIBLE
             if (formVisible) {
-                // en modo formulario oculto lista y botones de "add"
                 profileListContainer.visibility = GONE
                 btnAddCenter.visibility        = GONE
                 btnAddBelow.visibility         = GONE
-
-                // y muestro el formulario
                 profileForm.visibility         = VISIBLE
             } else {
-                // en modo lista oculto formulario
                 profileForm.visibility         = GONE
-
-                // muestro lista y botón principal de "add"
                 profileListContainer.visibility= VISIBLE
                 btnAddCenter.visibility        = VISIBLE
                 btnAddBelow.visibility         = GONE
@@ -542,21 +536,48 @@ class StreamSettingsFragment : Fragment(R.layout.fragment_stream_settings) {
         }
 
         // 7) Initial load
-        progressBar.visibility = VISIBLE
-        repo.fetchProfiles(object: SettingsProfileRepository.FetchCallback {
-            override fun onEmpty() {
-                progressBar.visibility = GONE
-                if (vm.isFormVisible.value != true) showEmptyState()
-            }
-            override fun onError(e: Exception) {
-                progressBar.visibility = GONE
-                if (vm.isFormVisible.value != true) showEmptyState()
-            }
-            override fun onLoaded(profiles: List<SettingsProfile>) {
-                progressBar.visibility = GONE
-                if (vm.isFormVisible.value != true) showProfiles(profiles)
-            }
-        })
+//        btnAddCenter.visibility = GONE
+//        btnAddBelow.visibility = GONE
+//        progressBar.visibility = VISIBLE
+//        repo.fetchProfiles(object: SettingsProfileRepository.FetchCallback {
+//            override fun onEmpty() {
+//                progressBar.visibility = GONE
+//                if (vm.isFormVisible.value != true) showEmptyState()
+//            }
+//            override fun onError(e: Exception) {
+//                progressBar.visibility = GONE
+//                if (vm.isFormVisible.value != true) showEmptyState()
+//            }
+//            override fun onLoaded(profiles: List<SettingsProfile>) {
+//                progressBar.visibility = GONE
+//                if (vm.isFormVisible.value != true) showProfiles(profiles)
+//            }
+//        })
+        if (vm.isFormVisible.value != true) {
+            // estamos en modo lista → cargamos los perfiles
+            btnAddCenter.visibility = GONE
+            btnAddBelow.visibility = GONE
+            progressBar.visibility = VISIBLE
+            repo.fetchProfiles(object: SettingsProfileRepository.FetchCallback {
+                override fun onEmpty() {
+                    progressBar.visibility = GONE
+                    showEmptyState()
+                }
+                override fun onError(e: Exception) {
+                    progressBar.visibility = GONE
+                    showEmptyState()
+                }
+                override fun onLoaded(profiles: List<SettingsProfile>) {
+                    progressBar.visibility = GONE
+                    showProfiles(profiles)
+                }
+            })
+        } else {
+            // estamos en modo formulario → restauramos la vista de formulario
+            scrollContainer.visibility = VISIBLE
+            profileForm.visibility     = VISIBLE
+            profileListContainer.visibility = GONE
+        }
     }
 
     private fun showForm() {
