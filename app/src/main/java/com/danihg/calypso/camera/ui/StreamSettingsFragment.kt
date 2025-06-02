@@ -40,6 +40,19 @@ import com.pedro.common.VideoCodec
 
 class StreamSettingsFragment : Fragment(R.layout.fragment_stream_settings) {
 
+    companion object {
+        private const val ARG_IS_ACTIVE = "is_active"
+        fun newInstance(isActive: Boolean): StreamSettingsFragment {
+            return StreamSettingsFragment().apply {
+                arguments = Bundle().apply {
+                    putBoolean(ARG_IS_ACTIVE, isActive)
+                }
+            }
+        }
+    }
+
+    private var isActiveMode = false
+
     private val repo = SettingsProfileRepository()
     private val vm   by viewModels<StreamSettingsViewModel>()
 
@@ -739,6 +752,7 @@ class StreamSettingsFragment : Fragment(R.layout.fragment_stream_settings) {
 
                                 cameraViewModel.requestLoadProfile(streamProfile)
                                 cameraViewModel.setStreamUrl(streamProfile.rtmpUrl)
+                                cameraViewModel.setVideoBitrate(streamProfile.videoBitrate)
 
                                 parentFragmentManager.popBackStack()
 

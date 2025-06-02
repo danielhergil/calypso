@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/dark_gray">
+
+    <ProgressBar
+        android:id="@+id/progressBar"
+        style="?android:attr/progressBarStyleLarge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:indeterminateTint="@color/calypso_red"
+        android:layout_gravity="center"
+        android:visibility="gone"/>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnCloseStreamSettings"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:layout_gravity="top|end"
+        android:layout_margin="16dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:padding="0dp"
+        app:icon="@drawable/ic_close"
+        app:iconTint="@color/WHITE"
+        app:iconGravity="textStart"
+        app:iconPadding="0dp"
+        app:backgroundTint="@android:color/transparent"
+        app:cornerRadius="16dp" />
+
+    <ScrollView
+        android:id="@+id/scroll_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginTop="64dp"
+        android:padding="16dp">
+
+        <LinearLayout
+            android:id="@+id/content_container"
+            android:orientation="vertical"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <LinearLayout
+                android:id="@+id/profile_form"
+                android:orientation="vertical"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <!-- Sección de Video Settings -->
+                <TextView
+                    android:id="@+id/tvVideoSettingsHeader"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Video Settings"
+                    style="@style/TextAppearance.MaterialComponents.Headline6"
+                    android:layout_marginBottom="8dp" />
+
+                <!-- Video Source Dropdown -->
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/tilVideoSource"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Video Source"
+                    android:layout_marginBottom="12dp">
+
+                    <AutoCompleteTextView
+                        android:id="@+id/autoCompleteVideoSource"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="none" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- Bitrate Input -->
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/tilVideoBitrate"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Bitrate"
+                    app:suffixText="Mbps"
+                    android:layout_marginBottom="12dp">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/etVideoBitrate"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="number"
+                        android:text="5" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- Sección de Audio Settings -->
+                <TextView
+                    android:id="@+id/tvAudioSettingsHeader"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Audio Settings"
+                    style="@style/TextAppearance.MaterialComponents.Headline6"
+                    android:layout_marginTop="24dp"
+                    android:layout_marginBottom="8dp" />
+
+                <!-- Audio Source Dropdown -->
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/tilAudioSource"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Audio Source"
+                    android:layout_marginBottom="12dp">
+
+                    <AutoCompleteTextView
+                        android:id="@+id/autoCompleteAudioSource"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="none" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- Botón Apply Changes -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnApplyChanges"
+                    style="@style/Widget.MaterialComponents.Button"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Apply Changes"
+                    android:layout_marginTop="24dp"
+                    app:backgroundTint="@color/calypso_red"
+                    android:textColor="@android:color/white"
+                    app:cornerRadius="4dp"
+                    app:rippleColor="?attr/colorOnPrimary" />
+
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+</FrameLayout>

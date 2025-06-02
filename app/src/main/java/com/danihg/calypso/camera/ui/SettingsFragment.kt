@@ -1,15 +1,18 @@
 package com.danihg.calypso.camera.ui
 
 import android.os.Bundle
-import android.util.Log
 import android.view.View
 import androidx.core.view.isGone
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
 import com.danihg.calypso.R
+import com.danihg.calypso.camera.CameraViewModel
 import com.google.android.material.button.MaterialButton
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 class SettingsFragment : Fragment(R.layout.fragment_settings) {
+
+    private val cameraViewModel: CameraViewModel by activityViewModels()
+    private val genericStream get() = cameraViewModel.genericStream
 
     private lateinit var btnSettings: MaterialButton
     private lateinit var btnSettingsStream: MaterialButton
@@ -37,10 +40,17 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
 
         // Listeners para los botones adicionales
         btnSettingsStream.setOnClickListener {
-            parentFragmentManager.beginTransaction()
-                .replace(R.id.settings_container, StreamSettingsFragment())
-                .addToBackStack(null)
-                .commit()
+            if (genericStream.isStreaming || genericStream.isRecording) {
+                parentFragmentManager.beginTransaction()
+                    .replace(R.id.settings_container, ActiveStreamSettingsFragment())
+                    .addToBackStack(null)
+                    .commit()
+            } else {
+                parentFragmentManager.beginTransaction()
+                    .replace(R.id.settings_container, StreamSettingsFragment())
+                    .addToBackStack(null)
+                    .commit()
+            }
         }
         btnSettingsCamera.setOnClickListener {
             // TODO: tu lógica para ajustes de cámara
