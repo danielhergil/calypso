@@ -1,10 +1,15 @@
 package com.danihg.calypso.camera.ui
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.res.ColorStateList
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -29,6 +34,20 @@ class CameraControlsFragment : Fragment(R.layout.fragment_camera_controls) {
     private lateinit var btnRecord: MaterialButton
     private lateinit var btnStream: MaterialButton
     private lateinit var btnPicture: MaterialButton
+
+    // Permission launcher for CameraControlsFragment
+    private val requestPermissionsLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val allGranted = permissions.all { it.value }
+        if (!allGranted) {
+            Toast.makeText(
+                requireContext(),
+                "Permissions are required to record/stream",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
 
     // holds the session ID generated when streaming (or recording) starts
     private var sessionId: String? = null
@@ -61,8 +80,20 @@ class CameraControlsFragment : Fragment(R.layout.fragment_camera_controls) {
         }
 
         // 3) Listeners
-        btnRecord.setOnClickListener { toggleRecord() }
-        btnStream.setOnClickListener { toggleStream() }
+        btnRecord.setOnClickListener {
+            if (hasRequiredPermissions()) {
+                toggleRecord()
+            } else {
+                requestMissingPermissions()
+            }
+        }
+        btnStream.setOnClickListener {
+            if (hasRequiredPermissions()) {
+                toggleStream()
+            } else {
+                requestMissingPermissions()
+            }
+        }
         btnPicture.setOnClickListener {
             Log.d("CameraControlsFragment", "btnPicture clicked")
             // TODO: implement still‐capture via genericStream o GL snapshot
@@ -200,6 +231,80 @@ class CameraControlsFragment : Fragment(R.layout.fragment_camera_controls) {
         } else {
             btnStream.setIconResource(R.drawable.ic_stream_mode)
             btnStream.iconTint = null
+        }
+    }
+
+    private fun hasRequiredPermissions(): Boolean {
+        val context = requireContext()
+        val cameraGranted = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.CAMERA
+        ) == PackageManager.PERMISSION_GRANTED
+
+        val audioGranted = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.RECORD_AUDIO
+        ) == PackageManager.PERMISSION_GRANTED
+
+        val fgsMicGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.FOREGROUND_SERVICE_MICROPHONE
+            ) == PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
+
+        val fgsCameraGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.FOREGROUND_SERVICE_CAMERA
+            ) == PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
+
+        return cameraGranted && audioGranted && fgsMicGranted && fgsCameraGranted
+    }
+
+    private fun requestMissingPermissions() {
+        val permsToRequest = mutableListOf<String>()
+        val context = requireContext()
+
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
+            != PackageManager.PERMISSION_GRANTED) {
+            permsToRequest.add(Manifest.permission.CAMERA)
+        }
+
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
+            != PackageManager.PERMISSION_GRANTED) {
+            permsToRequest.add(Manifest.permission.RECORD_AUDIO)
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.FOREGROUND_SERVICE_MICROPHONE
+                ) != PackageManager.PERMISSION_GRANTED) {
+                permsToRequest.add(Manifest.permission.FOREGROUND_SERVICE_MICROPHONE)
+            }
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            if (ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.FOREGROUND_SERVICE_CAMERA
+                ) != PackageManager.PERMISSION_GRANTED) {
+                permsToRequest.add(Manifest.permission.FOREGROUND_SERVICE_CAMERA)
+            }
+        }
+
+        if (permsToRequest.isNotEmpty()) {
+            requestPermissionsLauncher.launch(permsToRequest.toTypedArray())
+        } else {
+            Toast.makeText(
+                context,
+                "All permissions already granted",
+                Toast.LENGTH_SHORT
+            ).show()
         }
     }
 }
