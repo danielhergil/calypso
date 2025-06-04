@@ -238,7 +238,7 @@
                     android:id="@+id/tvVideoSettingsHeader"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Video Settings"
+                    android:text="Streaming Video Settings"
                     style="@style/TextAppearance.MaterialComponents.Headline6"
                     android:layout_marginTop="24dp"
                     android:layout_marginBottom="8dp" />
@@ -330,7 +330,7 @@
                     android:id="@+id/tvRecordSettingsHeader"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Record Settings"
+                    android:text="Record Video Settings"
                     style="@style/TextAppearance.MaterialComponents.Headline6"
                     android:layout_marginTop="24dp"
                     android:layout_marginBottom="8dp" />

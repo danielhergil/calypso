@@ -58,4 +58,17 @@
             app:cornerRadius="28dp"/>
     </LinearLayout>
 
+    <TextView
+        android:id="@+id/tvProfileInfo"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="96dp"
+        android:layout_marginBottom="8dp"
+        android:textSize="10sp"
+        android:textStyle="bold"
+        android:textColor="@android:color/white"
+        android:text=""
+        android:visibility="gone"/>
+
 </FrameLayout>

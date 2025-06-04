@@ -18,13 +18,15 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.cardview.widget.CardView
 import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 import androidx.core.view.children
 import androidx.core.widget.doOnTextChanged
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
 import com.danihg.calypso.R
-import com.danihg.calypso.camera.CameraViewModel
+import com.danihg.calypso.camera.models.CameraViewModel
+import com.danihg.calypso.camera.models.SharedProfileViewModel
 import com.danihg.calypso.data.AudioSourceType
 import com.danihg.calypso.data.SettingsProfile
 import com.danihg.calypso.data.SettingsProfileRepository
@@ -50,6 +52,13 @@ class StreamSettingsFragment : Fragment(R.layout.fragment_stream_settings) {
             }
         }
     }
+
+    /**
+     * Obtén el ViewModel compartido a nivel de Activity.
+     * Si tu Activity es, por ejemplo, MainActivity, todos los fragments
+     * inyectarán el mismo SharedProfileViewModel.
+     */
+    private val sharedProfileVm: SharedProfileViewModel by activityViewModels()
 
     private var isActiveMode = false
 
@@ -750,9 +759,23 @@ class StreamSettingsFragment : Fragment(R.layout.fragment_stream_settings) {
                                     rtmpUrl       = rtmpUrl
                                 )
 
+                                sharedProfileVm.setProfile(streamProfile)
+                                sharedProfileVm.setProfileAlias(alias)
+
                                 cameraViewModel.requestLoadProfile(streamProfile)
                                 cameraViewModel.setStreamUrl(streamProfile.rtmpUrl)
                                 cameraViewModel.setVideoBitrate(streamProfile.videoBitrate)
+
+                                // --- GUARDAR EN SHARED PREFERENCES ---
+                                val prefs = requireActivity()
+                                    .getSharedPreferences("stream_prefs", Context.MODE_PRIVATE)
+                                prefs.edit {
+                                    putString("last_loaded_profile", profile.alias)
+                                    putString("last_loaded_profile_resolution", vRes)
+                                    putString("last_loaded_profile_fps", streamProfile.videoFps.toString())
+                                    putString("last_loaded_profile_rtmp", selectedAlias)
+                                }
+
 
                                 parentFragmentManager.popBackStack()
 

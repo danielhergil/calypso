@@ -9,6 +9,7 @@ import android.view.View
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import com.danihg.calypso.R
+import com.danihg.calypso.camera.models.CameraViewModel
 import com.danihg.calypso.data.AudioSourceType
 import com.danihg.calypso.data.StreamProfile
 import com.danihg.calypso.data.VideoSourceType

@@ -2,11 +2,9 @@ package com.danihg.calypso.starter.start
 
 import android.Manifest
 import android.app.Activity
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -16,6 +14,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
+import com.danihg.calypso.CalypsoApp
 import com.danihg.calypso.R
 import com.danihg.calypso.databinding.FragmentInitialBinding
 import com.google.android.gms.auth.api.signin.GoogleSignIn
@@ -38,25 +37,25 @@ class InitialFragment : Fragment() {
     private val requestPermissionsLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { perms ->
-        // Verificamos cada permiso según correspondan
         val cameraGranted = perms[Manifest.permission.CAMERA] == true
         val audioGranted = perms[Manifest.permission.RECORD_AUDIO] == true
 
-        // A partir de API 33, el permiso FOREGROUND_SERVICE_MICROPHONE debe pedirse también
         val fgsMicGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             perms[Manifest.permission.FOREGROUND_SERVICE_MICROPHONE] == true
         } else {
             true
         }
 
-        // A partir de API 34, el permiso FOREGROUND_SERVICE_CAMERA debe pedirse también
         val fgsCameraGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             perms[Manifest.permission.FOREGROUND_SERVICE_CAMERA] == true
         } else {
             true
         }
 
-        if (!cameraGranted || !audioGranted || !fgsMicGranted || !fgsCameraGranted) {
+        if (cameraGranted && audioGranted && fgsMicGranted && fgsCameraGranted) {
+            // Aquí ya tenemos todos los permisos → inicializamos el audio
+            (requireActivity().application as CalypsoApp).initializeAudioIfNeeded()
+        } else {
             Toast.makeText(
                 requireContext(),
                 "Camera, audio y permisos de servicio en primer plano son necesarios para continuar",
@@ -65,22 +64,20 @@ class InitialFragment : Fragment() {
         }
     }
 
-    // Replace deprecated startActivityForResult/onActivityResult
+    // Reemplaza startActivityForResult/onActivityResult
     private val googleSignInLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result: ActivityResult ->
         if (result.resultCode == Activity.RESULT_OK) {
-            val data: Intent? = result.data
-            val task: Task<GoogleSignInAccount> = GoogleSignIn.getSignedInAccountFromIntent(data)
+            val data = result.data
+            val task: Task<GoogleSignInAccount> =
+                GoogleSignIn.getSignedInAccountFromIntent(data)
             try {
                 val account = task.getResult(ApiException::class.java)!!
                 firebaseAuthWithGoogle(account.idToken!!)
             } catch (e: ApiException) {
-                Log.w("InitialFragment", "Google sign in failed", e)
                 Toast.makeText(requireContext(), "Google sign-in failed.", Toast.LENGTH_SHORT).show()
             }
-        } else {
-            Log.w("InitialFragment", "Google sign in canceled or failed")
         }
     }
 
@@ -97,8 +94,11 @@ class InitialFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         auth = FirebaseAuth.getInstance()
 
-        // Comprobamos permisos con la nueva función
-        if (!hasAllRequiredPermissions()) {
+        // 1) Si ya tenemos todos los permisos, los usamos inmediatamente:
+        if (hasAllRequiredPermissions()) {
+            (requireActivity().application as CalypsoApp).initializeAudioIfNeeded()
+        } else {
+            // 2) Si no, pedimos los que falten:
             requestMissingPermissions()
         }
 
@@ -123,18 +123,18 @@ class InitialFragment : Fragment() {
     }
 
     private fun hasAllRequiredPermissions(): Boolean {
-        val context = requireContext()
+        val ctx = requireContext()
         val cameraGranted = ContextCompat.checkSelfPermission(
-            context, Manifest.permission.CAMERA
+            ctx, Manifest.permission.CAMERA
         ) == PackageManager.PERMISSION_GRANTED
 
         val audioGranted = ContextCompat.checkSelfPermission(
-            context, Manifest.permission.RECORD_AUDIO
+            ctx, Manifest.permission.RECORD_AUDIO
         ) == PackageManager.PERMISSION_GRANTED
 
         val fgsMicGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             ContextCompat.checkSelfPermission(
-                context,
+                ctx,
                 Manifest.permission.FOREGROUND_SERVICE_MICROPHONE
             ) == PackageManager.PERMISSION_GRANTED
         } else {
@@ -143,7 +143,7 @@ class InitialFragment : Fragment() {
 
         val fgsCameraGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             ContextCompat.checkSelfPermission(
-                context,
+                ctx,
                 Manifest.permission.FOREGROUND_SERVICE_CAMERA
             ) == PackageManager.PERMISSION_GRANTED
         } else {
@@ -155,32 +155,36 @@ class InitialFragment : Fragment() {
 
     private fun requestMissingPermissions() {
         val permsToRequest = mutableListOf<String>()
-        val context = requireContext()
+        val ctx = requireContext()
 
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
-            != PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(ctx, Manifest.permission.CAMERA)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
             permsToRequest.add(Manifest.permission.CAMERA)
         }
 
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
-            != PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(ctx, Manifest.permission.RECORD_AUDIO)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
             permsToRequest.add(Manifest.permission.RECORD_AUDIO)
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(
-                    context,
+                    ctx,
                     Manifest.permission.FOREGROUND_SERVICE_MICROPHONE
-                ) != PackageManager.PERMISSION_GRANTED) {
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
                 permsToRequest.add(Manifest.permission.FOREGROUND_SERVICE_MICROPHONE)
             }
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             if (ContextCompat.checkSelfPermission(
-                    context,
+                    ctx,
                     Manifest.permission.FOREGROUND_SERVICE_CAMERA
-                ) != PackageManager.PERMISSION_GRANTED) {
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
                 permsToRequest.add(Manifest.permission.FOREGROUND_SERVICE_CAMERA)
             }
         }

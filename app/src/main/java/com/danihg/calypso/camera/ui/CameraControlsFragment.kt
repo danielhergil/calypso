@@ -14,7 +14,7 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import com.danihg.calypso.R
-import com.danihg.calypso.camera.CameraViewModel
+import com.danihg.calypso.camera.models.CameraViewModel
 import com.danihg.calypso.constants.ACTION_START_RECORD
 import com.danihg.calypso.constants.ACTION_START_STREAM
 import com.danihg.calypso.constants.ACTION_STOP_RECORD
