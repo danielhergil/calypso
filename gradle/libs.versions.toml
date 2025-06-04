@@ -19,6 +19,7 @@ rootEncoderLibrary = "2.6.1"
 rootEncoderExtra = "2.6.1"
 crashlytics = "3.0.3"
 swiperefreshlayout = "1.1.0"
+lifecycleService = "2.9.0"
 
 [libraries]
 androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
@@ -42,6 +43,7 @@ play-services-auth = { module = "com.google.android.gms:play-services-auth", ver
 rootencoder-library = {module = "com.github.pedroSG94.RootEncoder:library", version.ref = "rootEncoderLibrary"}
 rootencoder-extra = {module = "com.github.pedroSG94.RootEncoder:extra-sources", version.ref = "rootEncoderExtra"}
 androidx-swiperefreshlayout = { group = "androidx.swiperefreshlayout", name = "swiperefreshlayout", version.ref = "swiperefreshlayout" }
+androidx-lifecycle-service = { group = "androidx.lifecycle", name = "lifecycle-service", version.ref = "lifecycleService" }
 
 
 [plugins]

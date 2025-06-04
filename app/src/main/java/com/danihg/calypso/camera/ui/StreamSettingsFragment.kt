@@ -2,6 +2,7 @@
 package com.danihg.calypso.camera.ui
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -11,33 +12,55 @@ import android.view.ViewGroup
 import android.view.ViewGroup.LayoutParams
 import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
+import android.widget.Filter
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.cardview.widget.CardView
 import androidx.core.content.ContextCompat
+import androidx.core.content.edit
 import androidx.core.view.children
 import androidx.core.widget.doOnTextChanged
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
 import com.danihg.calypso.R
-import com.danihg.calypso.camera.CameraViewModel
+import com.danihg.calypso.camera.models.CameraViewModel
+import com.danihg.calypso.camera.models.SharedProfileViewModel
 import com.danihg.calypso.data.AudioSourceType
 import com.danihg.calypso.data.SettingsProfile
-import com.danihg.calypso.models.StreamSettingsViewModel
 import com.danihg.calypso.data.SettingsProfileRepository
 import com.danihg.calypso.data.StreamConnection
 import com.danihg.calypso.data.StreamProfile
 import com.danihg.calypso.data.VideoSourceType
+import com.danihg.calypso.models.StreamSettingsViewModel
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import com.pedro.common.VideoCodec
-import com.pedro.encoder.input.sources.video.Camera2Source
 
 class StreamSettingsFragment : Fragment(R.layout.fragment_stream_settings) {
+
+    companion object {
+        private const val ARG_IS_ACTIVE = "is_active"
+        fun newInstance(isActive: Boolean): StreamSettingsFragment {
+            return StreamSettingsFragment().apply {
+                arguments = Bundle().apply {
+                    putBoolean(ARG_IS_ACTIVE, isActive)
+                }
+            }
+        }
+    }
+
+    /**
+     * Obtén el ViewModel compartido a nivel de Activity.
+     * Si tu Activity es, por ejemplo, MainActivity, todos los fragments
+     * inyectarán el mismo SharedProfileViewModel.
+     */
+    private val sharedProfileVm: SharedProfileViewModel by activityViewModels()
+
+    private var isActiveMode = false
 
     private val repo = SettingsProfileRepository()
     private val vm   by viewModels<StreamSettingsViewModel>()
@@ -147,9 +170,9 @@ class StreamSettingsFragment : Fragment(R.layout.fragment_stream_settings) {
             }
         }
 
-        connAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_list_item_1)
+        connAdapter = NoFilterArrayAdapter(requireContext(), android.R.layout.simple_list_item_1, mutableListOf())
         acConn.setAdapter(connAdapter)
-        acConn.threshold = 0
+        acConn.threshold = 1 // Prevent automatic filtering
 
         // helper para repoblar el dropdown con "None" + aliases actuales
         fun refreshConnAdapter() {
@@ -164,19 +187,14 @@ class StreamSettingsFragment : Fragment(R.layout.fragment_stream_settings) {
 
         // Cuando toques el campo, vuelve a colocar el adapter y despliega
         acConn.setOnClickListener {
-            if (connAdapter.count > 0) {
-                acConn.setAdapter(connAdapter)
-                acConn.showDropDown()
-            }
+            refreshConnAdapter()
+            acConn.showDropDown()
         }
 
         // También al tocar la flecha / icono:
         acConn.setOnTouchListener { v, _ ->
-            if (connAdapter.count > 0) {
-                acConn.setAdapter(connAdapter)
-                acConn.showDropDown()
-            }
-            // deja que pase el evento también para que conserve el foco
+            refreshConnAdapter()
+            acConn.showDropDown()
             false
         }
         tilConnDropdown.visibility = GONE
@@ -184,8 +202,9 @@ class StreamSettingsFragment : Fragment(R.layout.fragment_stream_settings) {
         btnDeleteConn.visibility   = GONE
 
         fun setupDropdown(dropdown: AutoCompleteTextView, items: List<String>) {
-            ArrayAdapter(requireContext(), android.R.layout.simple_list_item_1, items)
+            NoFilterArrayAdapter(requireContext(), android.R.layout.simple_list_item_1, items)
                 .also { dropdown.setAdapter(it) }
+            dropdown.threshold = 1 // Prevent automatic filtering
         }
 
         setupDropdown(acVideoSource,      videoSourceOptions)
@@ -261,11 +280,6 @@ class StreamSettingsFragment : Fragment(R.layout.fragment_stream_settings) {
             }
         }
         acVideoSource.setOnClickListener {
-            val adapter = ArrayAdapter(requireContext(),
-                android.R.layout.simple_list_item_1,
-                videoSourceOptions
-            )
-            acVideoSource.setAdapter(adapter)
             acVideoSource.showDropDown()
         }
         // Video Codec
@@ -275,11 +289,6 @@ class StreamSettingsFragment : Fragment(R.layout.fragment_stream_settings) {
             }
         }
         acCodec.setOnClickListener {
-            val adapter = ArrayAdapter(requireContext(),
-                android.R.layout.simple_list_item_1,
-                codecOptions
-            )
-            acCodec.setAdapter(adapter)
             acCodec.showDropDown()
         }
         vm.videoResolution.observe(viewLifecycleOwner) { value ->
@@ -289,15 +298,6 @@ class StreamSettingsFragment : Fragment(R.layout.fragment_stream_settings) {
         }
         // 3) Listener PARA CUANDO SE HAGA CLICK EN EL CAMPO
         acResolution.setOnClickListener {
-            // 3.1) Reasigna un adapter fresco con todas las opciones
-            val adapter = ArrayAdapter(
-                requireContext(),
-                android.R.layout.simple_list_item_1,
-                resolutionOptions
-            )
-            acResolution.setAdapter(adapter)
-
-            // 3.2) Lanza el desplegable
             acResolution.showDropDown()
         }
 
@@ -309,11 +309,6 @@ class StreamSettingsFragment : Fragment(R.layout.fragment_stream_settings) {
             }
         }
         acFps.setOnClickListener {
-            val adapter = ArrayAdapter(requireContext(),
-                android.R.layout.simple_list_item_1,
-                fpsOptions
-            )
-            acFps.setAdapter(adapter)
             acFps.showDropDown()
         }
         vm.videoBitrate.observe(viewLifecycleOwner)   { if (etVideoBitrate.text.toString() != it.toString()) etVideoBitrate.setText(it.toString()) }
@@ -324,11 +319,6 @@ class StreamSettingsFragment : Fragment(R.layout.fragment_stream_settings) {
             }
         }
         acRecordResolution.setOnClickListener {
-            val adapter = ArrayAdapter(requireContext(),
-                android.R.layout.simple_list_item_1,
-                resolutionOptions
-            )
-            acRecordResolution.setAdapter(adapter)
             acRecordResolution.showDropDown()
         }
         vm.recordBitrate.observe(viewLifecycleOwner)  { if (etRecordBitrate.text.toString() != it.toString()) etRecordBitrate.setText(it.toString()) }
@@ -339,11 +329,6 @@ class StreamSettingsFragment : Fragment(R.layout.fragment_stream_settings) {
             }
         }
         acAudioSource.setOnClickListener {
-            val adapter = ArrayAdapter(requireContext(),
-                android.R.layout.simple_list_item_1,
-                audioSourceOptions
-            )
-            acAudioSource.setAdapter(adapter)
             acAudioSource.showDropDown()
         }
         // Audio Bitrate
@@ -354,11 +339,6 @@ class StreamSettingsFragment : Fragment(R.layout.fragment_stream_settings) {
             }
         }
         acAudioBitrate.setOnClickListener {
-            val adapter = ArrayAdapter(requireContext(),
-                android.R.layout.simple_list_item_1,
-                audioBitrateOptions
-            )
-            acAudioBitrate.setAdapter(adapter)
             acAudioBitrate.showDropDown()
         }
 
@@ -779,8 +759,23 @@ class StreamSettingsFragment : Fragment(R.layout.fragment_stream_settings) {
                                     rtmpUrl       = rtmpUrl
                                 )
 
+                                sharedProfileVm.setProfile(streamProfile)
+                                sharedProfileVm.setProfileAlias(alias)
+
                                 cameraViewModel.requestLoadProfile(streamProfile)
                                 cameraViewModel.setStreamUrl(streamProfile.rtmpUrl)
+                                cameraViewModel.setVideoBitrate(streamProfile.videoBitrate)
+
+                                // --- GUARDAR EN SHARED PREFERENCES ---
+                                val prefs = requireActivity()
+                                    .getSharedPreferences("stream_prefs", Context.MODE_PRIVATE)
+                                prefs.edit {
+                                    putString("last_loaded_profile", profile.alias)
+                                    putString("last_loaded_profile_resolution", vRes)
+                                    putString("last_loaded_profile_fps", streamProfile.videoFps.toString())
+                                    putString("last_loaded_profile_rtmp", selectedAlias)
+                                }
+
 
                                 parentFragmentManager.popBackStack()
 
@@ -905,5 +900,27 @@ class StreamSettingsFragment : Fragment(R.layout.fragment_stream_settings) {
                 }
             }
         })
+    }
+
+    private class NoFilterArrayAdapter<T>(
+        context: Context,
+        resource: Int,
+        private val items: List<T>
+    ) : ArrayAdapter<T>(context, resource, items) {
+
+        override fun getFilter(): Filter {
+            return object : Filter() {
+                override fun performFiltering(constraint: CharSequence?): FilterResults {
+                    return FilterResults().apply {
+                        values = items
+                        count = items.size
+                    }
+                }
+
+                override fun publishResults(constraint: CharSequence?, results: FilterResults?) {
+                    notifyDataSetChanged()
+                }
+            }
+        }
     }
 }
