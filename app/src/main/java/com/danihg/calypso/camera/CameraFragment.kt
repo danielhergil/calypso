@@ -10,11 +10,11 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import com.danihg.calypso.R
 import com.danihg.calypso.camera.models.CameraViewModel
+import com.danihg.calypso.camera.sources.CameraCalypsoSource
 import com.danihg.calypso.data.AudioSourceType
 import com.danihg.calypso.data.StreamProfile
 import com.danihg.calypso.data.VideoSourceType
 import com.pedro.encoder.input.sources.audio.MicrophoneSource
-import com.pedro.encoder.input.sources.video.Camera2Source
 import com.pedro.extrasources.CameraUvcSource
 
 class CameraFragment : Fragment(R.layout.fragment_camera_preview) {
@@ -110,7 +110,7 @@ class CameraFragment : Fragment(R.layout.fragment_camera_preview) {
         }
 
         val videoSource = when (profile.videoSource) {
-            VideoSourceType.DEVICE_CAMERA -> Camera2Source(requireContext())
+            VideoSourceType.DEVICE_CAMERA -> CameraCalypsoSource(requireContext())
             VideoSourceType.USB_CAMERA    -> CameraUvcSource()
         }
 
@@ -127,7 +127,7 @@ class CameraFragment : Fragment(R.layout.fragment_camera_preview) {
 
     private fun applyActiveSettings(settings: CameraViewModel.ActiveSettings) {
         val videoSource = when (settings.videoSourceType) {
-            VideoSourceType.DEVICE_CAMERA -> Camera2Source(requireContext())
+            VideoSourceType.DEVICE_CAMERA -> CameraCalypsoSource(requireContext())
             VideoSourceType.USB_CAMERA -> CameraUvcSource()
         }
 

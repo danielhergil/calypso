@@ -14,13 +14,13 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import com.danihg.calypso.R
 import com.danihg.calypso.camera.models.CameraViewModel
+import com.danihg.calypso.camera.sources.CameraCalypsoSource
 import com.danihg.calypso.data.AudioSourceType
 import com.danihg.calypso.data.VideoSourceType
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import com.pedro.encoder.input.sources.audio.MicrophoneSource
-import com.pedro.encoder.input.sources.video.Camera2Source
 import com.pedro.extrasources.CameraUvcSource
 
 class ActiveStreamSettingsFragment : Fragment(R.layout.fragment_stream_settings_active) {
@@ -77,7 +77,7 @@ class ActiveStreamSettingsFragment : Fragment(R.layout.fragment_stream_settings_
 
         // 4) Set initial values
         val currentVideoSource = when (genericStream.videoSource) {
-            is Camera2Source -> "Device Camera"
+            is CameraCalypsoSource -> "Device Camera"
             is CameraUvcSource -> "USB Camera"
             else -> "Device Camera"
         }
