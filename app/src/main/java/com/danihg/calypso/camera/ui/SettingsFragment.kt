@@ -3,6 +3,7 @@ package com.danihg.calypso.camera.ui
 import android.content.Context
 import android.hardware.camera2.CameraCharacteristics
 import android.os.Bundle
+import android.util.Log
 import android.util.TypedValue
 import android.view.View
 import android.widget.SeekBar
@@ -22,20 +23,20 @@ import com.google.android.material.button.MaterialButton
 class SettingsFragment : Fragment(R.layout.fragment_settings) {
 
     private companion object {
-        const val DEFAULT_PROGRESS = 5
+        const val DEFAULT_PROGRESS = 5   // Para EV (–5..+5)
     }
 
-    // (1) Inicializamos CameraSettingsViewModel con SavedStateHandle
+    // 1) ViewModel con SavedStateHandle
     private val settingsVm: CameraSettingsViewModel by viewModels {
         SavedStateViewModelFactory(requireActivity().application, this)
     }
 
-    // (2) ViewModels adicionales
+    // 2) Otros ViewModels
     private val sharedProfileVm: SharedProfileViewModel by activityViewModels()
     private val cameraViewModel: CameraViewModel by activityViewModels()
     private val genericStream get() = cameraViewModel.genericStream
 
-    // (3) Referencias a vistas
+    // 3) Referencias a vistas
     private lateinit var btnSettings: MaterialButton
     private lateinit var btnSettingsStream: MaterialButton
     private lateinit var btnSettingsCamera: MaterialButton
@@ -44,14 +45,14 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
     private lateinit var btnCameraAuto: MaterialButton
     private lateinit var btnExposureCompensation: MaterialButton
 
-    // → Nuestras 3 vistas nuevas:
+    // — Nuevos botones de “Manual Mode”:
     private lateinit var btnIso: MaterialButton
     private lateinit var btnExposureTime: MaterialButton
     private lateinit var btnWhiteBalance: MaterialButton
 
     private lateinit var tvProfileInfo: TextView
-    private lateinit var tvEvValue: TextView
-    private lateinit var seekBarExposure: SeekBar
+    private lateinit var tvEvValue: TextView      // Para la etiqueta del slider activo
+    private lateinit var seekBarExposure: SeekBar  // Un único SeekBar que se reconfigura
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -66,18 +67,16 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         btnCameraAuto             = view.findViewById(R.id.btnCameraAuto)
         btnExposureCompensation   = view.findViewById(R.id.btnExposureCompensation)
 
-        // ——— NUESTROS 3 BOTONES NUEVOS ———
         btnIso                    = view.findViewById(R.id.btnIso)
         btnExposureTime           = view.findViewById(R.id.btnExposureTime)
         btnWhiteBalance           = view.findViewById(R.id.btnWhiteBalance)
-        // —————————————————————————
 
         tvProfileInfo             = view.findViewById(R.id.tvProfileInfo)
         tvEvValue                 = view.findViewById(R.id.tvEvValue)
         seekBarExposure           = view.findViewById(R.id.seekBarExposure)
 
         // —————————————————————————
-        // 3.2) Ajuste dinámico tamaño de tvProfileInfo
+        // 3.2) Ajuste dinámico tamaño tvProfileInfo
         // —————————————————————————
         val metrics = requireContext().resources.displayMetrics
         val anchoDp = metrics.widthPixels / metrics.density
@@ -85,47 +84,44 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         tvProfileInfo.setTextSize(TypedValue.COMPLEX_UNIT_SP, sizeSp)
 
         // —————————————————————————
-        // 3.3) Observamos SharedProfileViewModel para la etiqueta de perfil
+        // 3.3) Observamos SharedProfileViewModel para texto de perfil
         // —————————————————————————
         sharedProfileVm.loadedProfile.observe(viewLifecycleOwner) { updateProfileInfo() }
         sharedProfileVm.loadedProfileAlias.observe(viewLifecycleOwner) { updateProfileInfo() }
 
         // —————————————————————————
-        // 3.4) Observadores de todos los LiveData en settingsVm
+        // 3.4) Observadores LiveData en settingsVm
         // —————————————————————————
 
-        settingsVm.isManualVisible.observe(viewLifecycleOwner) { visible ->
-            btnCameraManual.visibility = if (visible) View.VISIBLE else View.GONE
+        // (a) Mostrar/ocultar “Manual” / “Auto”
+        settingsVm.isManualVisible.observe(viewLifecycleOwner) { v ->
+            btnCameraManual.visibility = if (v) View.VISIBLE else View.GONE
+        }
+        settingsVm.isAutoVisible.observe(viewLifecycleOwner) { v ->
+            btnCameraAuto.visibility = if (v) View.VISIBLE else View.GONE
         }
 
-        settingsVm.isAutoVisible.observe(viewLifecycleOwner) { visible ->
-            btnCameraAuto.visibility = if (visible) View.VISIBLE else View.GONE
-        }
-
-        settingsVm.isStreamCameraVisible.observe(viewLifecycleOwner) { visible ->
-            val visibility = if (visible) View.VISIBLE else View.GONE
+        // (b) Mostrar/ocultar “Stream” / “Camera”
+        settingsVm.isStreamCameraVisible.observe(viewLifecycleOwner) { v ->
+            val visibility = if (v) View.VISIBLE else View.GONE
             btnSettingsStream.visibility = visibility
             btnSettingsCamera.visibility = visibility
         }
 
-        settingsVm.isExposureButtonVisible.observe(viewLifecycleOwner) { visible ->
-            btnExposureCompensation.visibility = if (visible) View.VISIBLE else View.GONE
-
-            // Ajustar α según si el modo está activo o no
+        // (c) Mostrar/ocultar botón “Exposure Compensation”
+        settingsVm.isExposureButtonVisible.observe(viewLifecycleOwner) { v ->
+            btnExposureCompensation.visibility = if (v) View.VISIBLE else View.GONE
             settingsVm.isExposureModeActive.value?.let { active ->
                 btnExposureCompensation.alpha = if (active) 0.4f else 0.8f
             }
         }
 
+        // (d) Modo “Exposure Compensation” activo/inactivo
         settingsVm.isExposureModeActive.observe(viewLifecycleOwner) { active ->
             if (active) {
                 tvEvValue.visibility = View.VISIBLE
                 seekBarExposure.visibility = View.VISIBLE
-                settingsVm.seekBarProgress.value?.let { progress ->
-                    seekBarExposure.progress = progress
-                    updateEvText(progress)
-                    applyExposureCompensation(progress)
-                }
+                restoreExposureSlider()
             } else {
                 tvEvValue.visibility = View.GONE
                 seekBarExposure.visibility = View.GONE
@@ -133,28 +129,72 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
             btnExposureCompensation.alpha = if (active) 0.4f else 0.8f
         }
 
-        // Si el progreso almacenado no es el valor por defecto, se aplica automáticamente:
-        settingsVm.seekBarProgress.value?.let { progress ->
-            if (progress != DEFAULT_PROGRESS) {
-                view.postDelayed({
-                    applyExposureCompensation(progress)
-                }, 300)
+        // Si EV guardado ≠ DEFAULT, aplicamos al inicio
+        settingsVm.seekBarProgress.value?.let { p ->
+            if (p != DEFAULT_PROGRESS) {
+                view.postDelayed({ applyExposureCompensation(p) }, 300)
             }
         }
 
-        // —————————————————————————
-        // 3.5) Observamos nuestro nuevo LiveData: isManualOptionsVisible
-        //        para alternar la visibilidad de btnIso, btnExposureTime, btnWhiteBalance
-        // —————————————————————————
-        settingsVm.isManualOptionsVisible.observe(viewLifecycleOwner) { visible ->
-            val v = if (visible) View.VISIBLE else View.GONE
-            btnIso.visibility = v
-            btnExposureTime.visibility = v
-            btnWhiteBalance.visibility = v
+        // (e) Modo “ISO” (solo mostrar slider cuando esté activo)
+        settingsVm.isISOModeActive.observe(viewLifecycleOwner) { active ->
+            if (active) {
+                tvEvValue.visibility = View.VISIBLE
+                seekBarExposure.visibility = View.VISIBLE
+                restoreISOSlider()
+            } else {
+                // si no hay otros modos, se oculta
+                if (settingsVm.isExposureModeActive.value == false
+                    && settingsVm.isWBModeActive.value == false
+                    && settingsVm.isETModeActive.value == false) {
+                    tvEvValue.visibility = View.GONE
+                    seekBarExposure.visibility = View.GONE
+                }
+            }
+        }
+
+        // (f) Modo “White Balance”
+        settingsVm.isWBModeActive.observe(viewLifecycleOwner) { active ->
+            if (active) {
+                tvEvValue.visibility = View.VISIBLE
+                seekBarExposure.visibility = View.VISIBLE
+                restoreWbSlider()
+            } else {
+                if (settingsVm.isExposureModeActive.value == false
+                    && settingsVm.isISOModeActive.value == false
+                    && settingsVm.isETModeActive.value == false) {
+                    tvEvValue.visibility = View.GONE
+                    seekBarExposure.visibility = View.GONE
+                }
+            }
+        }
+
+        // (g) Modo “Exposure Time”
+        settingsVm.isETModeActive.observe(viewLifecycleOwner) { active ->
+            if (active) {
+                tvEvValue.visibility = View.VISIBLE
+                seekBarExposure.visibility = View.VISIBLE
+                restoreEtSlider()
+            } else {
+                if (settingsVm.isExposureModeActive.value == false
+                    && settingsVm.isISOModeActive.value == false
+                    && settingsVm.isWBModeActive.value == false) {
+                    tvEvValue.visibility = View.GONE
+                    seekBarExposure.visibility = View.GONE
+                }
+            }
+        }
+
+        // (h) Mostrar/ocultar botones “ISO/ET/WB” (grupo “Manual Options”)
+        settingsVm.isManualOptionsVisible.observe(viewLifecycleOwner) { v ->
+            val vis = if (v) View.VISIBLE else View.GONE
+            btnIso.visibility = vis
+            btnExposureTime.visibility = vis
+            btnWhiteBalance.visibility = vis
         }
 
         // —————————————————————————
-        // 4) Click listener de btnSettings (botón principal)
+        // 4) Click listener “Settings” principal
         // —————————————————————————
         btnSettings.setOnClickListener {
             val anyVisible =
@@ -170,7 +210,7 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                         || !btnWhiteBalance.isGone)
 
             if (anyVisible) {
-                // 4.1) Ocultamos TODO y reseteamos flags en el ViewModel
+                // Ocultamos TODO y reiniciamos flags
                 btnCameraManual.visibility        = View.GONE
                 btnCameraAuto.visibility          = View.GONE
                 btnExposureCompensation.visibility = View.GONE
@@ -179,20 +219,26 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                 seekBarExposure.visibility        = View.GONE
                 tvEvValue.visibility              = View.GONE
 
-                // → También ocultamos el grupo “Manual Options”
                 btnIso.visibility                 = View.GONE
                 btnExposureTime.visibility        = View.GONE
                 btnWhiteBalance.visibility        = View.GONE
 
-                // 4.2) Reiniciamos todos los estados en el ViewModel:
                 settingsVm.setManualVisible(false)
                 settingsVm.setAutoVisible(false)
                 settingsVm.setExposureButtonVisible(false)
                 settingsVm.setStreamCameraVisible(false)
+
+                // Apagamos todos los modos manuales
                 settingsVm.setExposureModeActive(false)
+                settingsVm.setIsISOModeActive(false)
+                settingsVm.setIsWBModeActive(false)
+                settingsVm.setIsETModeActive(false)
                 settingsVm.setManualOptionsVisible(false)
+
+                // Apagamos “modo manual global” (para el caso ISO)
+                settingsVm.setManualMode(false)
             } else {
-                // 4.3) Si no había nada visible, alternamos “Stream” y “Camera”
+                // Alternamos “Stream / Camera”
                 val nextVis = if (btnSettingsStream.isGone) View.VISIBLE else View.GONE
                 btnSettingsStream.visibility = nextVis
                 btnSettingsCamera.visibility = nextVis
@@ -206,7 +252,7 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         }
 
         // —————————————————————————
-        // 5) Click listener de btnSettingsStream (igual que antes)
+        // 5) Click listener “Settings Stream”
         // —————————————————————————
         btnSettingsStream.setOnClickListener {
             if (genericStream.isStreaming || genericStream.isRecording) {
@@ -223,8 +269,7 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         }
 
         // —————————————————————————
-        // 6) Click listener de btnSettingsCamera:
-        //    - oculto “Stream/Camera” y muestro “Manual” y “Auto”
+        // 6) Click listener “Settings Camera”
         // —————————————————————————
         btnSettingsCamera.setOnClickListener {
             btnSettingsStream.visibility = View.GONE
@@ -244,22 +289,24 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         }
 
         // —————————————————————————
-        // 7) Click listener de btnCameraManual:
-        //    - ocultar Manual/Auto
-        //    - mostrar ISO / ExposureTime / WhiteBalance
+        // 7) Click listener “Camera Manual”
         // —————————————————————————
         btnCameraManual.setOnClickListener {
-            // 7.1) Ocultamos Manual/Auto
+            // Entramos en “modo manual global”
+            settingsVm.setManualMode(true)
+
+            // Ocultamos “Manual” / “Auto”
             btnCameraManual.visibility = View.GONE
             btnCameraAuto.visibility   = View.GONE
             settingsVm.setManualVisible(false)
             settingsVm.setAutoVisible(false)
 
-            // 7.2) Mostramos el grupo de “Manual Options”
-            btnIso.alpha             = 0f
-            btnExposureTime.alpha    = 0f
-            btnWhiteBalance.alpha    = 0f
-            btnIso.visibility        = View.VISIBLE
+            // Mostramos los 3 botones “ISO / ET / WB”
+            btnIso.alpha = 0f
+            btnExposureTime.alpha = 0f
+            btnWhiteBalance.alpha = 0f
+
+            btnIso.visibility         = View.VISIBLE
             btnExposureTime.visibility = View.VISIBLE
             btnWhiteBalance.visibility = View.VISIBLE
 
@@ -271,9 +318,12 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         }
 
         // —————————————————————————
-        // 8) Click listener de btnCameraAuto (igual que antes)
+        // 8) Click listener “Camera Auto”
         // —————————————————————————
         btnCameraAuto.setOnClickListener {
+            // Salimos de “modo manual global”
+            settingsVm.setManualMode(false)
+
             btnCameraManual.visibility = View.GONE
             btnCameraAuto.visibility   = View.GONE
             settingsVm.setManualVisible(false)
@@ -298,23 +348,30 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         }
 
         // —————————————————————————
-        // 9) Click listener de btnExposureCompensation (igual que antes)
+        // 9) Click listener “Exposure Compensation”
         // —————————————————————————
         btnExposureCompensation.setOnClickListener {
             val cameraSource = (genericStream.videoSource as? CameraCalypsoSource) ?: return@setOnClickListener
             val currentlyActive = settingsVm.isExposureModeActive.value ?: false
 
             if (!currentlyActive) {
+                // Entramos modo “Exposure Compensation”
                 settingsVm.setExposureModeActive(true)
-                btnExposureCompensation.alpha = 0.4f
+                settingsVm.setIsISOModeActive(false)
+                settingsVm.setIsWBModeActive(false)
+                settingsVm.setIsETModeActive(false)
 
+                btnExposureCompensation.alpha = 0.4f
                 tvEvValue.visibility = View.VISIBLE
                 seekBarExposure.visibility = View.VISIBLE
 
+                // Restaurar progreso EV
                 val restored = settingsVm.seekBarProgress.value ?: DEFAULT_PROGRESS
+                seekBarExposure.max = 10
                 seekBarExposure.progress = restored
                 updateEvText(restored)
             } else {
+                // Salimos de modo
                 settingsVm.setExposureModeActive(false)
                 btnExposureCompensation.alpha = 0.8f
 
@@ -324,14 +381,35 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         }
 
         // —————————————————————————
-        // 10) ChangeListener del SeekBar (igual que antes)
+        // 10) CHANGE LISTENER SeekBar
         // —————————————————————————
         seekBarExposure.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(sb: SeekBar, progress: Int, fromUser: Boolean) {
-                if (fromUser) {
-                    settingsVm.setSeekBarProgress(progress)
-                    updateEvText(progress)
-                    applyExposureCompensation(progress)
+                if (!fromUser) return
+                val cameraSource = genericStream.videoSource as? CameraCalypsoSource ?: return
+
+                when {
+                    // 1) MODO “Exposure Compensation”
+                    settingsVm.isExposureModeActive.value == true -> {
+                        settingsVm.setSeekBarProgress(progress)
+                        updateEvText(progress)
+                        applyExposureCompensation(progress)
+                    }
+                    // 2) MODO “ISO”
+                    settingsVm.isISOModeActive.value == true -> {
+                        settingsVm.setIsoSeekProgress(progress)
+                        applyISOSlider(progress, cameraSource)
+                    }
+                    // 3) MODO “WHITE BALANCE”
+                    settingsVm.isWBModeActive.value == true -> {
+                        settingsVm.setWbSeekProgress(progress)
+                        applyWbSlider(progress, cameraSource)
+                    }
+                    // 4) MODO “EXPOSURE TIME”
+                    settingsVm.isETModeActive.value == true -> {
+                        settingsVm.setEtSeekProgress(progress)
+                        applyEtSlider(progress, cameraSource)
+                    }
                 }
             }
             override fun onStartTrackingTouch(sb: SeekBar) { /*no-op*/ }
@@ -339,103 +417,442 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         })
 
         // —————————————————————————
-        // 11) Restaurar UI tras rotación o al volver de segundo plano
+        // 11) Click listener “ISO”
+        // —————————————————————————
+        btnIso.setOnClickListener {
+            // Desactivar todos los modos manuales previos
+            settingsVm.setExposureModeActive(false)
+            settingsVm.setIsWBModeActive(false)
+            settingsVm.setIsETModeActive(false)
+
+            // Toggle ISO mode
+            val isoActive = settingsVm.isISOModeActive.value ?: false
+            if (isoActive) {
+                // Ya estaba en ISO → lo apagamos
+                settingsVm.setIsISOModeActive(false)
+                tvEvValue.visibility = View.GONE
+                seekBarExposure.visibility = View.GONE
+            } else {
+                // Entramos en ISO
+                settingsVm.setIsISOModeActive(true)
+                settingsVm.setIsWBModeActive(false)
+                settingsVm.setIsETModeActive(false)
+                settingsVm.setExposureModeActive(false)
+
+                tvEvValue.visibility = View.VISIBLE
+                seekBarExposure.visibility = View.VISIBLE
+                restoreISOSlider()
+            }
+        }
+
+        // —————————————————————————
+        // 12) Click listener “White Balance”
+        // —————————————————————————
+        btnWhiteBalance.setOnClickListener {
+            // Desactivar todos los modos manuales previos
+            settingsVm.setExposureModeActive(false)
+            settingsVm.setIsISOModeActive(false)
+            settingsVm.setIsETModeActive(false)
+
+            // Toggle WB mode
+            val wbActive = settingsVm.isWBModeActive.value ?: false
+            if (wbActive) {
+                settingsVm.setIsWBModeActive(false)
+                tvEvValue.visibility = View.GONE
+                seekBarExposure.visibility = View.GONE
+            } else {
+                settingsVm.setIsWBModeActive(true)
+                settingsVm.setExposureModeActive(false)
+                settingsVm.setIsISOModeActive(false)
+                settingsVm.setIsETModeActive(false)
+
+                tvEvValue.visibility = View.VISIBLE
+                seekBarExposure.visibility = View.VISIBLE
+                restoreWbSlider()
+            }
+        }
+
+        // —————————————————————————
+        // 13) Click listener “Exposure Time”
+        // —————————————————————————
+        btnExposureTime.setOnClickListener {
+            // Desactivar todos los modos manuales previos
+            settingsVm.setExposureModeActive(false)
+            settingsVm.setIsISOModeActive(false)
+            settingsVm.setIsWBModeActive(false)
+
+            // Toggle ET mode
+            val etActive = settingsVm.isETModeActive.value ?: false
+            if (etActive) {
+                settingsVm.setIsETModeActive(false)
+                tvEvValue.visibility = View.GONE
+                seekBarExposure.visibility = View.GONE
+            } else {
+                settingsVm.setIsETModeActive(true)
+                settingsVm.setExposureModeActive(false)
+                settingsVm.setIsISOModeActive(false)
+                settingsVm.setIsWBModeActive(false)
+
+                tvEvValue.visibility = View.VISIBLE
+                seekBarExposure.visibility = View.VISIBLE
+                restoreEtSlider()
+            }
+        }
+
+        // —————————————————————————
+        // 14) Restaurar UIState tras rotación / volver de fondo
         // —————————————————————————
         restoreUIState()
 
         // —————————————————————————
-        // 12) Siempre actualizamos la info de perfil
+        // 15) Info de perfil
         // —————————————————————————
         updateProfileInfo()
     }
 
     override fun onResume() {
         super.onResume()
-        // Al volver de segundo plano, restauramos estado
         restoreUIState()
     }
 
-    /**
-     * (A) Restaura todas las vistas según los LiveData en settingsVm
-     */
+    // ------------------------------------------------------
+    // (A) Métodos auxiliares para “Recovery” de cada slider
+    // ------------------------------------------------------
+
+    /** Restaura el SeekBar en modo “EV” y actualiza etiqueta. */
+    private fun restoreExposureSlider() {
+        val progress = settingsVm.seekBarProgress.value ?: DEFAULT_PROGRESS
+        seekBarExposure.max = 10
+        seekBarExposure.progress = progress
+        updateEvText(progress)
+    }
+
+    /** Restaura el SeekBar en modo ISO. */
+    private fun restoreISOSlider() {
+        val cameraSource = (genericStream.videoSource as? CameraCalypsoSource) ?: return
+        if (!cameraSource.isRunning()) {
+            view?.postDelayed({ restoreISOSlider() }, 300)
+            return
+        }
+        // Rango físico de ISO:
+        val minIso = cameraSource.getMinISO()
+        val maxIso = cameraSource.getMaxISO()
+        val stepIso = 100
+        val stepsCount = ((maxIso - minIso) / stepIso).coerceAtLeast(1)
+        seekBarExposure.max = stepsCount
+
+        // Progreso guardado: si es -1, significa “auto ISO” → leemos getISO() actual
+        val savedProg = settingsVm.isoSeekProgress.value ?: -1
+        val progress = if (savedProg < 0) {
+            // ¿Cuál es el ISO actual de la cámara?
+            val curIso = cameraSource.getISO().coerceIn(minIso, maxIso)
+            ((curIso - minIso + stepIso / 2) / stepIso).coerceIn(0, stepsCount)
+        } else {
+            savedProg.coerceIn(0, stepsCount)
+        }
+        seekBarExposure.progress = progress
+
+        // Si savedProg < 0 (auto), no forzamos nada. Si >=0, aplicamos manual:
+        if (savedProg >= 0) {
+            val chosenIso = (minIso + progress * stepIso).coerceIn(minIso, maxIso)
+            tvEvValue.text = "ISO: $chosenIso"
+            cameraSource.setISO(chosenIso)
+        } else {
+            // modo “auto ISO”
+            tvEvValue.text = "ISO: Auto"
+            cameraSource.enableAutoISO()
+        }
+    }
+
+    /** Aplica en la cámara el ISO para el `progress`. */
+    private fun applyISOSlider(progress: Int, cameraSource: CameraCalypsoSource) {
+        val minIso = cameraSource.getMinISO()
+        val maxIso = cameraSource.getMaxISO()
+        val stepIso = 100
+        val stepsCount = ((maxIso - minIso) / stepIso).coerceAtLeast(1)
+        val p = progress.coerceIn(0, stepsCount)
+        val isoValue = (minIso + p * stepIso).coerceIn(minIso, maxIso)
+        cameraSource.setISO(isoValue)
+        tvEvValue.text = "ISO: $isoValue"
+    }
+
+    /** Restaura el SeekBar en modo “White Balance”. */
+    private fun restoreWbSlider() {
+        val cameraSource = (genericStream.videoSource as? CameraCalypsoSource) ?: return
+        if (!cameraSource.isRunning()) {
+            view?.postDelayed({ restoreWbSlider() }, 300)
+            return
+        }
+        // Lista de modos AWB disponibles
+        val modesList = cameraSource.getAutoWhiteBalanceModesAvailable()
+        if (modesList.isEmpty()) {
+            tvEvValue.visibility = View.GONE
+            seekBarExposure.visibility = View.GONE
+            return
+        }
+        val count = modesList.size
+        seekBarExposure.max = count - 1
+
+        // Progreso guardado: si es -1, significa “auto AWB”
+        val savedProg = settingsVm.wbSeekProgress.value ?: -1
+        val progress = if (savedProg < 0) {
+            // Descubrimos el modo actual de la cámara:
+            val currentMode = cameraSource.getWhiteBalance()
+            modesList.indexOf(currentMode).let { idx -> if (idx < 0) 0 else idx }
+        } else {
+            savedProg.coerceIn(0, count - 1)
+        }
+        seekBarExposure.progress = progress
+
+        if (savedProg < 0) {
+            // “auto AWB”
+            val autoIdx = modesList.indexOf(CameraCharacteristics.CONTROL_AWB_MODE_AUTO)
+            if (autoIdx >= 0) {
+                cameraSource.enableAutoWhiteBalance(CameraCharacteristics.CONTROL_AWB_MODE_AUTO)
+                tvEvValue.text = "WB: Auto"
+            } else {
+                // si no hay AWB auto en la lista, simplemente dejo el índice 0
+                val mode0 = modesList[0]
+                cameraSource.enableAutoWhiteBalance(mode0)
+                tvEvValue.text = "WB: ${awbModeName(mode0)}"
+            }
+        } else {
+            // modo manual según “progress”
+            val chosenMode = modesList[progress]
+            cameraSource.enableAutoWhiteBalance(chosenMode)
+            tvEvValue.text = "WB: ${awbModeName(chosenMode)}"
+        }
+    }
+
+    /** Aplica en la cámara el modo AWB para el `progress`. */
+    private fun applyWbSlider(progress: Int, cameraSource: CameraCalypsoSource) {
+        val modesList = cameraSource.getAutoWhiteBalanceModesAvailable()
+        Log.d("applyWbSlider", "applyWbSlider: modesList = $modesList")
+        if (modesList.isEmpty()) return
+        val idx = progress.coerceIn(0, modesList.size - 1)
+        val chosenMode = modesList[idx]
+        cameraSource.enableAutoWhiteBalance(chosenMode)
+        tvEvValue.text = "WB: ${awbModeName(chosenMode)}"
+    }
+
+    /** Restaura el SeekBar en modo “Exposure Time” (8 valores fijos). */
+    private fun restoreEtSlider() {
+        val cameraSource = (genericStream.videoSource as? CameraCalypsoSource) ?: return
+        if (!cameraSource.isRunning()) {
+            view?.postDelayed({ restoreEtSlider() }, 300)
+            return
+        }
+        val etDenominators = arrayOf(30, 40, 50, 60, 100, 120, 250, 500)
+        seekBarExposure.max = etDenominators.size - 1
+
+        // Progreso almacenado:
+        val savedProg = settingsVm.etSeekProgress.value ?: 2
+        val progress = savedProg.coerceIn(0, etDenominators.size - 1)
+        seekBarExposure.progress = progress
+
+        // Etiqueta y aplicación real
+        val chosenDen = etDenominators[progress]
+        tvEvValue.text = "ET: 1/$chosenDen"
+        val ns = (1_000_000_000L / chosenDen)
+        cameraSource.setExposureTime(ns)
+    }
+
+    /** Aplica en la cámara el tiempo de exposición para el `progress`. */
+    private fun applyEtSlider(progress: Int, cameraSource: CameraCalypsoSource) {
+        val etDenominators = arrayOf(30, 40, 50, 60, 100, 120, 250, 500)
+        val idx = progress.coerceIn(0, etDenominators.size - 1)
+        val denom = etDenominators[idx]
+        val ns = (1_000_000_000L / denom)
+        cameraSource.setExposureTime(ns)
+        tvEvValue.text = "ET: 1/$denom"
+    }
+
+    /** Mapea código AWB a nombre legible. */
+    private fun awbModeName(mode: Int): String {
+        return when (mode) {
+            CameraCharacteristics.CONTROL_AWB_MODE_AUTO -> "Auto"
+            CameraCharacteristics.CONTROL_AWB_MODE_INCANDESCENT -> "Incandesc."
+            CameraCharacteristics.CONTROL_AWB_MODE_FLUORESCENT -> "Fluoresc."
+            CameraCharacteristics.CONTROL_AWB_MODE_DAYLIGHT -> "Daylight"
+            CameraCharacteristics.CONTROL_AWB_MODE_WARM_FLUORESCENT -> "Warm Fluor."
+            CameraCharacteristics.CONTROL_AWB_MODE_SHADE -> "Shade"
+            CameraCharacteristics.CONTROL_AWB_MODE_TWILIGHT -> "Twilight"
+            CameraCharacteristics.CONTROL_AWB_MODE_OFF -> "Off"
+            else -> mode.toString()
+        }
+    }
+
+    // ------------------------------------------------------
+    // (B) restoreUIState  + reaplicación de todos los ajustes
+    // ------------------------------------------------------
+
     private fun restoreUIState() {
-        // Manual / Auto
+        // 1) Restaurar “Manual” / “Auto”
         val manualVisible = settingsVm.isManualVisible.value ?: false
         btnCameraManual.visibility = if (manualVisible) View.VISIBLE else View.GONE
 
         val autoVisible = settingsVm.isAutoVisible.value ?: false
         btnCameraAuto.visibility = if (autoVisible) View.VISIBLE else View.GONE
 
-        // Stream / Camera
+        // 2) Restaurar “Stream” / “Camera”
         val streamVisible = settingsVm.isStreamCameraVisible.value ?: false
         val streamVis = if (streamVisible) View.VISIBLE else View.GONE
         btnSettingsStream.visibility = streamVis
         btnSettingsCamera.visibility = streamVis
 
-        // Exposure Compensation button
+        // 3) Restaurar “Exposure Compensation Button”
         val expButtonVisible = settingsVm.isExposureButtonVisible.value ?: false
         btnExposureCompensation.visibility = if (expButtonVisible) View.VISIBLE else View.GONE
 
-        // Ajustar α del botón “Exposure Compensation”
+        // Ajustar α
         val expModeActive = settingsVm.isExposureModeActive.value ?: false
         btnExposureCompensation.alpha = if (expModeActive) 0.4f else 0.8f
 
-        // Si “Exposure mode” está activo, mostrar SeekBar + etiqueta y aplicar
+        // 4) Restaurar modo “Exposure Compensation”
         if (expModeActive) {
             tvEvValue.visibility = View.VISIBLE
             seekBarExposure.visibility = View.VISIBLE
-            val progress = settingsVm.seekBarProgress.value ?: DEFAULT_PROGRESS
-            seekBarExposure.progress = progress
-            updateEvText(progress)
-            applyExposureCompensation(progress)
+            restoreExposureSlider()
         } else {
             tvEvValue.visibility = View.GONE
             seekBarExposure.visibility = View.GONE
         }
 
-        // —————————————————————————
-        // Restaurar el nuevo grupo “Manual Options”
-        // —————————————————————————
+        // 5) Restaurar “Manual Options” (ISO / ET / WB)
         val manualOptionsVisible = settingsVm.isManualOptionsVisible.value ?: false
         val mOptVis = if (manualOptionsVisible) View.VISIBLE else View.GONE
         btnIso.visibility = mOptVis
         btnExposureTime.visibility = mOptVis
         btnWhiteBalance.visibility = mOptVis
-    }
 
-    /**
-     * (B) Aplica la compensación de exposición en la cámara
-     */
-    private fun applyExposureCompensation(progress: Int) {
-        val cameraSource = (genericStream.videoSource as? CameraCalypsoSource) ?: return
-
-        // Si la cámara aún no está lista, reintentar un poco más tarde
-        if (!cameraSource.isRunning()) {
-            view?.postDelayed({
-                applyExposureCompensation(progress)
-            }, 300)
-            return
+        // 6) Restaurar ISO mode si estaba activo (solo para mostrar slider)
+        if (settingsVm.isISOModeActive.value == true) {
+            tvEvValue.visibility = View.VISIBLE
+            seekBarExposure.visibility = View.VISIBLE
+            restoreISOSlider()
         }
 
-        val multiplier = 4 // aquí defines cuánto amplificas cada paso de –5…+5
-        val rawEv = progress - DEFAULT_PROGRESS
-        var desiredIndex = rawEv * multiplier
+        // 7) Restaurar WB mode si estaba activo (solo para mostrar slider)
+        if (settingsVm.isWBModeActive.value == true) {
+            tvEvValue.visibility = View.VISIBLE
+            seekBarExposure.visibility = View.VISIBLE
+            restoreWbSlider()
+        }
 
-        val minIndex = cameraSource.getMinExposureCompensation()
-        val maxIndex = cameraSource.getMaxExposureCompensation()
-        desiredIndex = desiredIndex.coerceIn(minIndex, maxIndex)
+        // 8) Restaurar ET mode si estaba activo (solo para mostrar slider)
+        if (settingsVm.isETModeActive.value == true) {
+            tvEvValue.visibility = View.VISIBLE
+            seekBarExposure.visibility = View.VISIBLE
+            restoreEtSlider()
+        }
 
-        cameraSource.setExposureCompensation(desiredIndex)
+        // ————————————————————————————————————————
+        // 9) REAPLICAR TODO lo guardado a la cámara
+        // ————————————————————————————————————————
+//        val cameraSource = (genericStream.videoSource as? CameraCalypsoSource)
+//        if (cameraSource != null && cameraSource.isRunning()) {
+//            applyAllSavedSettings(cameraSource)
+//        } else {
+//            // Si la cámara aún no está lista, reintentamos en 300 ms
+//            view?.postDelayed({
+//                (genericStream.videoSource as? CameraCalypsoSource)?.let {
+//                    if (it.isRunning()) applyAllSavedSettings(it)
+//                }
+//            }, 300)
+//        }
+        val cameraSource = (genericStream.videoSource as? CameraCalypsoSource)
+        if (cameraSource != null && cameraSource.isRunning()) {
+            applyAllSavedSettings(cameraSource)
+            // ← Aquí, si no estamos en “Manual Mode”, forzamos AUTO en todo:
+            if (settingsVm.isManualMode.value != true) {
+                cameraSource.enableAutoExposure()
+                cameraSource.enableAutoISO()
+                cameraSource.enableAutoWhiteBalance(CameraCharacteristics.CONTROL_AWB_MODE_AUTO)
+                cameraSource.enableAutoFocus()
+            }
+        } else {
+            view?.postDelayed({
+                (genericStream.videoSource as? CameraCalypsoSource)?.let {
+                    if (it.isRunning()) {
+                        applyAllSavedSettings(it)
+                        if (settingsVm.isManualMode.value != true) {
+                            it.enableAutoExposure()
+                            it.enableAutoISO()
+                            it.enableAutoWhiteBalance(CameraCharacteristics.CONTROL_AWB_MODE_AUTO)
+                            it.enableAutoFocus()
+                        }
+                    }
+                }
+            }, 300)
+        }
     }
 
     /**
-     * (C) Actualiza la etiqueta EV en pantalla (muestra –5…+5)
+     * Reaplica en la cámara exactamente lo que el usuario guardó:
+     *  1) EV (si ≠ DEFAULT)
+     *  2) ISO (si guardó ≥0, o auto si quedó en –1)
+     *  3) WB (si guardó ≥0, o auto si quedó en –1)
+     *  4) ET (si guardó ≥0)
      */
+    private fun applyAllSavedSettings(cameraSource: CameraCalypsoSource) {
+        // 1) Exposure Compensation
+        val savedEv = settingsVm.seekBarProgress.value ?: DEFAULT_PROGRESS
+        if (savedEv != DEFAULT_PROGRESS) {
+            applyExposureCompensation(savedEv)
+        }
+
+        // 2) ISO
+        val savedIsoProg = settingsVm.isoSeekProgress.value ?: -1
+        if (savedIsoProg < 0) {
+            cameraSource.enableAutoISO()
+        } else {
+            applyISOSlider(savedIsoProg, cameraSource)
+        }
+
+        // 3) White Balance
+        val modesList = cameraSource.getAutoWhiteBalanceModesAvailable()
+        if (modesList.isNotEmpty()) {
+            val savedWbProg = settingsVm.wbSeekProgress.value ?: -1
+            if (savedWbProg < 0) {
+                // auto AWB
+                cameraSource.enableAutoWhiteBalance(CameraCharacteristics.CONTROL_AWB_MODE_AUTO)
+            } else {
+                applyWbSlider(savedWbProg, cameraSource)
+            }
+        }
+
+        // 4) Exposure Time
+        val savedEtProg = settingsVm.etSeekProgress.value ?: 2
+        applyEtSlider(savedEtProg, cameraSource)
+    }
+
+    // ------------------------------------------------------
+    // (C) updateEvText y applyExposureCompensation siguen igual
+    // ------------------------------------------------------
+
     private fun updateEvText(progress: Int) {
         val rawEv = progress - DEFAULT_PROGRESS
         tvEvValue.text = if (rawEv >= 0) "EV: +$rawEv" else "EV: $rawEv"
     }
 
+    private fun applyExposureCompensation(progress: Int) {
+        val cameraSource = (genericStream.videoSource as? CameraCalypsoSource) ?: return
+        if (!cameraSource.isRunning()) {
+            view?.postDelayed({ applyExposureCompensation(progress) }, 300)
+            return
+        }
+        val multiplier = 4
+        val rawEv = progress - DEFAULT_PROGRESS
+        var desiredIndex = rawEv * multiplier
+        val minIndex = cameraSource.getMinExposureCompensation()
+        val maxIndex = cameraSource.getMaxExposureCompensation()
+        desiredIndex = desiredIndex.coerceIn(minIndex, maxIndex)
+        cameraSource.setExposureCompensation(desiredIndex)
+    }
+
+    // ------------------------------------------------------
+    // (D) updateProfileInfo (sin cambios)
+    // ------------------------------------------------------
     private fun updateProfileInfo() {
         val prefs = requireActivity().getSharedPreferences("stream_prefs", Context.MODE_PRIVATE)
         val alias = prefs.getString("last_loaded_profile", null)

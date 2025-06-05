@@ -13,20 +13,22 @@ class CameraSettingsViewModel(
         private const val KEY_SEEK_PROGRESS = "seek_bar_progress"
         private const val KEY_EXPOSURE_MODE = "exposure_mode_active"
 
+        // Ahora los progesos de ISO y WB arrancan en -1 = “no he tocado nada, que quede en auto”
         private const val KEY_ISO_PROGRESS = "iso_seek_progress"
         private const val KEY_ISO_MODE = "iso_mode_active"
 
         private const val KEY_WB_PROGRESS = "wb_seek_progress"
         private const val KEY_WB_MODE = "wb_mode_active"
 
+        // El ET (Exposure Time) sí arranca en índice 2 = “1/50” por defecto
         private const val KEY_ET_PROGRESS = "et_seek_progress"
         private const val KEY_ET_MODE = "et_mode_active"
 
-        private const val DEFAULT_PROGRESS = 5          // Para EV (–5…+5)
-        private const val DEFAULT_ISO_PROGRESS = 0      // se inicializa en “minISO”
-        private const val DEFAULT_WB_PROGRESS = 0       // primera posición en la lista de AWB modes
-        private const val DEFAULT_ET_PROGRESS = 2       // índice 2 = “1/50” por defecto
-
+        // Valores por defecto:
+        private const val DEFAULT_PROGRESS = 5          // EV = 5  => EV=0 real
+        private const val DEFAULT_ISO_PROGRESS = -1     // -1 = “auto”
+        private const val DEFAULT_WB_PROGRESS = -1      // -1 = “auto AWB”
+        private const val DEFAULT_ET_PROGRESS = 2       // índice 2 => “1/50”
     }
 
     // 1) SeekBar de “Exposure Compensation” (persistido):
@@ -38,12 +40,14 @@ class CameraSettingsViewModel(
         savedStateHandle.getLiveData(KEY_EXPOSURE_MODE, false)
 
     // 3) SeekBar de “ISO” (persistido) + estado ISO mode:
+    //    - Ahora arranca en -1 (no tocado, autoISO)
     val isoSeekProgress: LiveData<Int> =
         savedStateHandle.getLiveData(KEY_ISO_PROGRESS, DEFAULT_ISO_PROGRESS)
     val isISOModeActive: LiveData<Boolean> =
         savedStateHandle.getLiveData(KEY_ISO_MODE, false)
 
     // 4) SeekBar de “White Balance” (persistido) + estado WB mode:
+    //    - Ahora arranca en -1 (no tocado, AWB auto)
     val wbSeekProgress: LiveData<Int> =
         savedStateHandle.getLiveData(KEY_WB_PROGRESS, DEFAULT_WB_PROGRESS)
     val isWBModeActive: LiveData<Boolean> =
@@ -55,7 +59,7 @@ class CameraSettingsViewModel(
     val isETModeActive: LiveData<Boolean> =
         savedStateHandle.getLiveData(KEY_ET_MODE, false)
 
-    // 6) Otros flags de visibilidad (no persistidos, ya que no es crítico almacenarlos):
+    // 6) Otros flags de visibilidad (no persistidos):
     private val _isExposureButtonVisible = MutableLiveData(false)
     val isExposureButtonVisible: LiveData<Boolean> = _isExposureButtonVisible
 
@@ -71,6 +75,10 @@ class CameraSettingsViewModel(
     // 7) Flag para mostrar/ocultar los 3 botones de “Manual Options” (ISO, ET, WB)
     private val _isManualOptionsVisible = MutableLiveData(false)
     val isManualOptionsVisible: LiveData<Boolean> = _isManualOptionsVisible
+
+    // 8) Nuevo flag “estoy en modo Manual” (solo para controlar cuándo aplicar ISO en automático):
+    private val _isManualMode = MutableLiveData(false)
+    val isManualMode: LiveData<Boolean> = _isManualMode
 
     // ------------------------------------------------------
     // Métodos para modificar el estado / SavedStateHandle
@@ -123,5 +131,10 @@ class CameraSettingsViewModel(
     }
     fun setManualOptionsVisible(visible: Boolean) {
         _isManualOptionsVisible.value = visible
+    }
+
+    // --- “Modo Manual” global ---
+    fun setManualMode(active: Boolean) {
+        _isManualMode.value = active
     }
 }
