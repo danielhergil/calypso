@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
+import com.danihg.calypso.camera.sources.CameraCalypsoSource
 import com.danihg.calypso.data.AudioSourceType
 import com.danihg.calypso.data.SettingsProfile
 import com.danihg.calypso.data.SettingsProfileRepository
@@ -15,6 +16,7 @@ import com.danihg.calypso.data.StreamProfile
 import com.danihg.calypso.data.VideoSourceType
 import com.pedro.common.ConnectChecker
 import com.pedro.common.VideoCodec
+import com.pedro.encoder.input.sources.audio.MicrophoneSource
 import com.pedro.library.generic.GenericStream
 
 /**
@@ -30,7 +32,7 @@ class CalypsoApp : Application(), ConnectChecker {
      * No llamamos a prepareAudio aquí sin comprobar permiso primero.
      */
     val genericStream: GenericStream by lazy {
-        GenericStream(this, this)
+        GenericStream(this, this, CameraCalypsoSource(this), MicrophoneSource())
     }
 
     /**

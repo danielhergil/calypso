@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <!-- Altura de toda la pista: 2dp, color semitransparente -->
+    <size android:height="2dp"/>
+    <solid android:color="#40FFFFFF"/>
+</shape>
