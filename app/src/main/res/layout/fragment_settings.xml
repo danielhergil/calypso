@@ -211,4 +211,118 @@
         android:text=""
         android:visibility="gone"
         tools:ignore="SmallSp" />
+
+    <!-- ────────────────────────────────────────────────
+         Contenedor vertical para los botones de Zoom
+         ──────────────────────────────────────────────── -->
+    <LinearLayout
+        android:id="@+id/zoom_controls"
+        android:orientation="vertical"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end|center_vertical"
+        android:translationY="-60dp"
+        android:layout_marginEnd="16dp">
+
+        <!-- Botón “+” para Zoom In -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnZoomIn"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="28dp"
+            android:layout_height="38dp"
+            android:layout_marginBottom="32dp"
+            android:alpha="0.8"
+            app:icon="@drawable/ic_add"
+            app:iconSize="24dp"
+            app:iconPadding="0dp"
+            app:iconGravity="textStart"
+            app:backgroundTint="#CCFFFFFF"
+            app:cornerRadius="24dp" />
+
+        <!-- Botón “–” para Zoom Out -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnZoomOut"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="28dp"
+            android:layout_height="38dp"
+            android:alpha="0.8"
+            app:icon="@drawable/ic_decrease"
+            app:iconSize="24dp"
+            app:iconPadding="0dp"
+            app:iconGravity="textStart"
+            app:backgroundTint="#CCFFFFFF"
+            app:cornerRadius="24dp" />
+
+    </LinearLayout>
+
+    <!-- ─────────────────────────────────────────────────────
+     Reemplaza únicamente la sección de “Controles de audio” por este bloque:
+     ───────────────────────────────────────────────────── -->
+    <RelativeLayout
+        android:id="@+id/audio_controls_container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end|top"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="60dp"
+        android:padding="0dp">
+
+        <!-- 1) Botón principal ic_volume_menu, siempre fijo en top|end -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnVolumeMenu"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="26dp"
+            android:layout_height="36dp"
+            android:alpha="0.8"
+            android:layout_alignParentEnd="true"
+            android:layout_alignParentTop="true"
+            app:icon="@drawable/ic_volume_menu"
+            app:iconSize="20dp"
+            app:iconPadding="0dp"
+            app:iconGravity="textStart"
+            app:backgroundTint="#CCFFFFFF"
+            app:cornerRadius="18dp" />
+
+        <!-- 2) Contenedor “expandible” (muta y barra) a la izquierda de btnVolumeMenu -->
+        <LinearLayout
+            android:id="@+id/volume_expandable"
+            android:orientation="horizontal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
+            android:layout_alignTop="@id/btnVolumeMenu"
+            android:layout_toStartOf="@id/btnVolumeMenu"
+            android:gravity="center_vertical"
+            android:paddingEnd="8dp"
+            android:paddingStart="0dp">
+
+            <!-- 2.1) SeekBar horizontal para controlar volumen -->
+            <SeekBar
+                android:id="@+id/seekBarVolume"
+                android:layout_width="120dp"
+                android:layout_height="wrap_content"
+                android:max="100"
+                android:progress="100"
+                android:splitTrack="false"
+                android:thumb="@drawable/thumb_line"
+                android:thumbTintMode="src_in"
+                android:progressDrawable="@drawable/seekbar_track"
+                android:layout_marginEnd="8dp" />
+
+            <!-- 2.2) Botón Mute / Unmute -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnMute"
+                style="@style/Widget.MaterialComponents.Button"
+                android:layout_width="26dp"
+                android:layout_height="36dp"
+                android:alpha="0.8"
+                app:icon="@drawable/ic_mute"
+                app:iconSize="20dp"
+                app:iconPadding="0dp"
+                app:iconGravity="textStart"
+                app:backgroundTint="#CCFFFFFF"
+                app:cornerRadius="18dp" />
+        </LinearLayout>
+    </RelativeLayout>
+
 </FrameLayout>

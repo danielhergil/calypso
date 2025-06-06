@@ -29,6 +29,17 @@ class CameraSettingsViewModel(
         private const val DEFAULT_ISO_PROGRESS = -1     // -1 = “auto”
         private const val DEFAULT_WB_PROGRESS = -1      // -1 = “auto AWB”
         private const val DEFAULT_ET_PROGRESS = 2       // índice 2 => “1/50”
+
+        // NUEVO: persistir nivel de zoom
+        private const val KEY_ZOOM_LEVEL = "zoom_level"
+        private const val DEFAULT_ZOOM_LEVEL = 1f
+
+        // Persistir nivel de VOLÚMEN (0f..1f) y estado MUTE
+        private const val KEY_VOLUME_LEVEL = "volume_level"
+        private const val DEFAULT_VOLUME_LEVEL = 1f
+
+        private const val KEY_IS_MUTED = "is_muted"
+        private const val DEFAULT_IS_MUTED = false
     }
 
     // 1) SeekBar de “Exposure Compensation” (persistido):
@@ -59,6 +70,14 @@ class CameraSettingsViewModel(
     val isETModeActive: LiveData<Boolean> =
         savedStateHandle.getLiveData(KEY_ET_MODE, false)
 
+    // 5) NUEVO: nivel de Volumen (persistido en SavedStateHandle)
+    val volumeLevel: LiveData<Float> =
+        savedStateHandle.getLiveData(KEY_VOLUME_LEVEL, DEFAULT_VOLUME_LEVEL)
+
+    // 6) NUEVO: estado “mute / unmute” (persistido en SavedStateHandle)
+    val isMuted: LiveData<Boolean> =
+        savedStateHandle.getLiveData(KEY_IS_MUTED, DEFAULT_IS_MUTED)
+
     // 6) Otros flags de visibilidad (no persistidos):
     private val _isExposureButtonVisible = MutableLiveData(false)
     val isExposureButtonVisible: LiveData<Boolean> = _isExposureButtonVisible
@@ -80,6 +99,12 @@ class CameraSettingsViewModel(
     private val _isManualMode = MutableLiveData(false)
     val isManualMode: LiveData<Boolean> = _isManualMode
 
+    val zoomLevel: LiveData<Float> =
+        savedStateHandle.getLiveData(KEY_ZOOM_LEVEL, DEFAULT_ZOOM_LEVEL)
+
+    private val _isVolumeMenuVisible = MutableLiveData(false)
+    val isVolumeMenuVisible: LiveData<Boolean> = _isVolumeMenuVisible
+
     // ------------------------------------------------------
     // Métodos para modificar el estado / SavedStateHandle
     // ------------------------------------------------------
@@ -94,7 +119,6 @@ class CameraSettingsViewModel(
     fun setExposureButtonVisible(visible: Boolean) {
         _isExposureButtonVisible.value = visible
     }
-
     // --- ISO Mode ---
     fun setIsoSeekProgress(progress: Int) {
         savedStateHandle[KEY_ISO_PROGRESS] = progress
@@ -102,7 +126,6 @@ class CameraSettingsViewModel(
     fun setIsISOModeActive(active: Boolean) {
         savedStateHandle[KEY_ISO_MODE] = active
     }
-
     // --- White Balance Mode ---
     fun setWbSeekProgress(progress: Int) {
         savedStateHandle[KEY_WB_PROGRESS] = progress
@@ -110,7 +133,6 @@ class CameraSettingsViewModel(
     fun setIsWBModeActive(active: Boolean) {
         savedStateHandle[KEY_WB_MODE] = active
     }
-
     // --- Exposure Time Mode ---
     fun setEtSeekProgress(progress: Int) {
         savedStateHandle[KEY_ET_PROGRESS] = progress
@@ -118,7 +140,18 @@ class CameraSettingsViewModel(
     fun setIsETModeActive(active: Boolean) {
         savedStateHandle[KEY_ET_MODE] = active
     }
-
+    /** Guarda el nivel de volumen (0f..1f) */
+    fun setVolumeLevel(level: Float) {
+        savedStateHandle[KEY_VOLUME_LEVEL] = level
+    }
+    /** Guarda el estado mute/unmute */
+    fun setIsMuted(muted: Boolean) {
+        savedStateHandle[KEY_IS_MUTED] = muted
+    }
+    /** Controla si el menú de audio está desplegado */
+    fun setVolumeMenuVisible(visible: Boolean) {
+        _isVolumeMenuVisible.value = visible
+    }
     // --- Otros flags de visibilidad ---
     fun setManualVisible(visible: Boolean) {
         _isManualVisible.value = visible
@@ -132,9 +165,11 @@ class CameraSettingsViewModel(
     fun setManualOptionsVisible(visible: Boolean) {
         _isManualOptionsVisible.value = visible
     }
-
     // --- “Modo Manual” global ---
     fun setManualMode(active: Boolean) {
         _isManualMode.value = active
+    }
+    fun setZoomLevel(level: Float) {
+        savedStateHandle[KEY_ZOOM_LEVEL] = level
     }
 }

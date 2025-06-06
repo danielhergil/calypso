@@ -1,10 +1,15 @@
 package com.danihg.calypso.camera.ui
 
+
+import android.annotation.SuppressLint
 import android.content.Context
 import android.hardware.camera2.CameraCharacteristics
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.util.TypedValue
+import android.view.MotionEvent
 import android.view.View
 import android.widget.SeekBar
 import android.widget.TextView
@@ -19,6 +24,7 @@ import com.danihg.calypso.camera.models.CameraViewModel
 import com.danihg.calypso.camera.models.SharedProfileViewModel
 import com.danihg.calypso.camera.sources.CameraCalypsoSource
 import com.google.android.material.button.MaterialButton
+import com.pedro.encoder.input.sources.audio.MicrophoneSource
 
 class SettingsFragment : Fragment(R.layout.fragment_settings) {
 
@@ -26,17 +32,17 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         const val DEFAULT_PROGRESS = 5   // Para EV (–5..+5)
     }
 
-    // 1) ViewModel con SavedStateHandle
+    // —————————————————————————————————————————
+    // 1) ViewModels y resto de referencias (igual que antes)
+    // —————————————————————————————————————————
     private val settingsVm: CameraSettingsViewModel by viewModels {
         SavedStateViewModelFactory(requireActivity().application, this)
     }
-
-    // 2) Otros ViewModels
     private val sharedProfileVm: SharedProfileViewModel by activityViewModels()
     private val cameraViewModel: CameraViewModel by activityViewModels()
     private val genericStream get() = cameraViewModel.genericStream
 
-    // 3) Referencias a vistas
+    // Botones ya existentes ...
     private lateinit var btnSettings: MaterialButton
     private lateinit var btnSettingsStream: MaterialButton
     private lateinit var btnSettingsCamera: MaterialButton
@@ -45,20 +51,42 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
     private lateinit var btnCameraAuto: MaterialButton
     private lateinit var btnExposureCompensation: MaterialButton
 
-    // — Nuevos botones de “Manual Mode”:
     private lateinit var btnIso: MaterialButton
     private lateinit var btnExposureTime: MaterialButton
     private lateinit var btnWhiteBalance: MaterialButton
 
     private lateinit var tvProfileInfo: TextView
-    private lateinit var tvEvValue: TextView      // Para la etiqueta del slider activo
-    private lateinit var seekBarExposure: SeekBar  // Un único SeekBar que se reconfigura
+    private lateinit var tvEvValue: TextView
+    private lateinit var seekBarExposure: SeekBar
 
+    // ──────────────────────────────────────────────────────────
+    // 2) Nuevas referencias para los botones de Zoom (“+” y “–”)
+    // ──────────────────────────────────────────────────────────
+    private lateinit var btnZoomIn: MaterialButton
+    private lateinit var btnZoomOut: MaterialButton
+
+    // —─────────────────────────────────────────────────────────
+    // 2) Nuevas referencias para los controles de audio
+    // —─────────────────────────────────────────────────────────
+    private lateinit var btnVolumeMenu: MaterialButton
+    private lateinit var btnMute: MaterialButton
+    private lateinit var volumeExpandable: View
+    private lateinit var seekBarVolume: SeekBar
+
+    // ──────────────────────────────────────────────────────────
+    // 3) Handler y Runnables para zoom continuo
+    // ──────────────────────────────────────────────────────────
+    private val zoomHandler = Handler(Looper.getMainLooper())
+    private var isZoomingIn = false
+    private var isZoomingOut = false
+
+
+    @SuppressLint("ClickableViewAccessibility")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
         // —————————————————————————
-        // 3.1) Bind de vistas
+        // 3.1) Bind de vistas (incluyendo zoom)
         // —————————————————————————
         btnSettings               = view.findViewById(R.id.btnSettings)
         btnSettingsStream         = view.findViewById(R.id.btnSettingsStream)
@@ -75,8 +103,20 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         tvEvValue                 = view.findViewById(R.id.tvEvValue)
         seekBarExposure           = view.findViewById(R.id.seekBarExposure)
 
+        // — Bind para los botones de Zoom
+        btnZoomIn                 = view.findViewById(R.id.btnZoomIn)
+        btnZoomOut                = view.findViewById(R.id.btnZoomOut)
+
+        // —─────────────────────────────────────────────────────────
+        // 3.2) Bind de vistas de audio
+        // —─────────────────────────────────────────────────────────
+        btnVolumeMenu             = view.findViewById(R.id.btnVolumeMenu)
+        btnMute                   = view.findViewById(R.id.btnMute)
+        volumeExpandable          = view.findViewById(R.id.volume_expandable)
+        seekBarVolume             = view.findViewById(R.id.seekBarVolume)
+
         // —————————————————————————
-        // 3.2) Ajuste dinámico tamaño tvProfileInfo
+        // 3.2) Ajuste dinámico tamaño tvProfileInfo (igual que antes)
         // —————————————————————————
         val metrics = requireContext().resources.displayMetrics
         val anchoDp = metrics.widthPixels / metrics.density
@@ -84,39 +124,30 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         tvProfileInfo.setTextSize(TypedValue.COMPLEX_UNIT_SP, sizeSp)
 
         // —————————————————————————
-        // 3.3) Observamos SharedProfileViewModel para texto de perfil
+        // 3.3) Observamos SharedProfileViewModel (igual que antes)
         // —————————————————————————
         sharedProfileVm.loadedProfile.observe(viewLifecycleOwner) { updateProfileInfo() }
         sharedProfileVm.loadedProfileAlias.observe(viewLifecycleOwner) { updateProfileInfo() }
-
         // —————————————————————————
-        // 3.4) Observadores LiveData en settingsVm
+        // 3.4) Observadores LiveData en settingsVm (igual que antes)
         // —————————————————————————
-
-        // (a) Mostrar/ocultar “Manual” / “Auto”
         settingsVm.isManualVisible.observe(viewLifecycleOwner) { v ->
             btnCameraManual.visibility = if (v) View.VISIBLE else View.GONE
         }
         settingsVm.isAutoVisible.observe(viewLifecycleOwner) { v ->
             btnCameraAuto.visibility = if (v) View.VISIBLE else View.GONE
         }
-
-        // (b) Mostrar/ocultar “Stream” / “Camera”
         settingsVm.isStreamCameraVisible.observe(viewLifecycleOwner) { v ->
             val visibility = if (v) View.VISIBLE else View.GONE
             btnSettingsStream.visibility = visibility
             btnSettingsCamera.visibility = visibility
         }
-
-        // (c) Mostrar/ocultar botón “Exposure Compensation”
         settingsVm.isExposureButtonVisible.observe(viewLifecycleOwner) { v ->
             btnExposureCompensation.visibility = if (v) View.VISIBLE else View.GONE
             settingsVm.isExposureModeActive.value?.let { active ->
                 btnExposureCompensation.alpha = if (active) 0.4f else 0.8f
             }
         }
-
-        // (d) Modo “Exposure Compensation” activo/inactivo
         settingsVm.isExposureModeActive.observe(viewLifecycleOwner) { active ->
             if (active) {
                 tvEvValue.visibility = View.VISIBLE
@@ -128,32 +159,21 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
             }
             btnExposureCompensation.alpha = if (active) 0.4f else 0.8f
         }
-
-        // Si EV guardado ≠ DEFAULT, aplicamos al inicio
-        settingsVm.seekBarProgress.value?.let { p ->
-            if (p != DEFAULT_PROGRESS) {
-                view.postDelayed({ applyExposureCompensation(p) }, 300)
-            }
-        }
-
-        // (e) Modo “ISO” (solo mostrar slider cuando esté activo)
         settingsVm.isISOModeActive.observe(viewLifecycleOwner) { active ->
             if (active) {
                 tvEvValue.visibility = View.VISIBLE
                 seekBarExposure.visibility = View.VISIBLE
                 restoreISOSlider()
             } else {
-                // si no hay otros modos, se oculta
                 if (settingsVm.isExposureModeActive.value == false
                     && settingsVm.isWBModeActive.value == false
-                    && settingsVm.isETModeActive.value == false) {
+                    && settingsVm.isETModeActive.value == false
+                ) {
                     tvEvValue.visibility = View.GONE
                     seekBarExposure.visibility = View.GONE
                 }
             }
         }
-
-        // (f) Modo “White Balance”
         settingsVm.isWBModeActive.observe(viewLifecycleOwner) { active ->
             if (active) {
                 tvEvValue.visibility = View.VISIBLE
@@ -162,14 +182,13 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
             } else {
                 if (settingsVm.isExposureModeActive.value == false
                     && settingsVm.isISOModeActive.value == false
-                    && settingsVm.isETModeActive.value == false) {
+                    && settingsVm.isETModeActive.value == false
+                ) {
                     tvEvValue.visibility = View.GONE
                     seekBarExposure.visibility = View.GONE
                 }
             }
         }
-
-        // (g) Modo “Exposure Time”
         settingsVm.isETModeActive.observe(viewLifecycleOwner) { active ->
             if (active) {
                 tvEvValue.visibility = View.VISIBLE
@@ -178,14 +197,13 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
             } else {
                 if (settingsVm.isExposureModeActive.value == false
                     && settingsVm.isISOModeActive.value == false
-                    && settingsVm.isWBModeActive.value == false) {
+                    && settingsVm.isWBModeActive.value == false
+                ) {
                     tvEvValue.visibility = View.GONE
                     seekBarExposure.visibility = View.GONE
                 }
             }
         }
-
-        // (h) Mostrar/ocultar botones “ISO/ET/WB” (grupo “Manual Options”)
         settingsVm.isManualOptionsVisible.observe(viewLifecycleOwner) { v ->
             val vis = if (v) View.VISIBLE else View.GONE
             btnIso.visibility = vis
@@ -193,8 +211,35 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
             btnWhiteBalance.visibility = vis
         }
 
+        // * AUDIO: observar estado de “isVolumeMenuVisible” para mostrar/ocultar panel
+        settingsVm.isVolumeMenuVisible.observe(viewLifecycleOwner) { visible ->
+            volumeExpandable.visibility = if (visible) View.VISIBLE else View.GONE
+        }
+
+        // * AUDIO: observar estado “isMuted” para actualizar icono btnMute
+        settingsVm.isMuted.observe(viewLifecycleOwner) { muted ->
+            val icon = if (muted) R.drawable.ic_volume_menu else R.drawable.ic_mute
+            btnMute.setIconResource(icon)
+        }
+
+        // * AUDIO: observar “volumeLevel” para reajustar SeekBar
+        settingsVm.volumeLevel.observe(viewLifecycleOwner) { level ->
+            // `level` viene en 0f..1f; SeekBar está en 0..100
+            val progress = (level * 100f).toInt().coerceIn(0, 100)
+            if (seekBarVolume.progress != progress) {
+                seekBarVolume.progress = progress
+            }
+        }
+
+        // Si EV guardado ≠ DEFAULT, aplicamos al inicio
+        settingsVm.seekBarProgress.value?.let { p ->
+            if (p != DEFAULT_PROGRESS) {
+                view.postDelayed({ applyExposureCompensation(p) }, 300)
+            }
+        }
+
         // —————————————————————————
-        // 4) Click listener “Settings” principal
+        // 4) Listeners de clic “Settings” (igual que antes)
         // —————————————————————————
         btnSettings.setOnClickListener {
             val anyVisible =
@@ -210,7 +255,7 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                         || !btnWhiteBalance.isGone)
 
             if (anyVisible) {
-                // Ocultamos TODO y reiniciamos flags
+                // Ocultamos TODO y reiniciamos flags (igual que antes)
                 btnCameraManual.visibility        = View.GONE
                 btnCameraAuto.visibility          = View.GONE
                 btnExposureCompensation.visibility = View.GONE
@@ -238,7 +283,7 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                 // Apagamos “modo manual global” (para el caso ISO)
                 settingsVm.setManualMode(false)
             } else {
-                // Alternamos “Stream / Camera”
+                // Alternamos “Stream / Camera” (igual que antes)
                 val nextVis = if (btnSettingsStream.isGone) View.VISIBLE else View.GONE
                 btnSettingsStream.visibility = nextVis
                 btnSettingsCamera.visibility = nextVis
@@ -252,7 +297,7 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         }
 
         // —————————————————————————
-        // 5) Click listener “Settings Stream”
+        // 5) Listeners “Settings Stream” (igual que antes)
         // —————————————————————————
         btnSettingsStream.setOnClickListener {
             if (genericStream.isStreaming || genericStream.isRecording) {
@@ -269,7 +314,7 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         }
 
         // —————————————————————————
-        // 6) Click listener “Settings Camera”
+        // 6) Listeners “Settings Camera” (igual que antes)
         // —————————————————————————
         btnSettingsCamera.setOnClickListener {
             btnSettingsStream.visibility = View.GONE
@@ -289,19 +334,16 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         }
 
         // —————————————————————————
-        // 7) Click listener “Camera Manual”
+        // 7) Listener “Camera Manual” (igual que antes)
         // —————————————————————————
         btnCameraManual.setOnClickListener {
-            // Entramos en “modo manual global”
             settingsVm.setManualMode(true)
 
-            // Ocultamos “Manual” / “Auto”
             btnCameraManual.visibility = View.GONE
             btnCameraAuto.visibility   = View.GONE
             settingsVm.setManualVisible(false)
             settingsVm.setAutoVisible(false)
 
-            // Mostramos los 3 botones “ISO / ET / WB”
             btnIso.alpha = 0f
             btnExposureTime.alpha = 0f
             btnWhiteBalance.alpha = 0f
@@ -318,10 +360,9 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         }
 
         // —————————————————————————
-        // 8) Click listener “Camera Auto”
+        // 8) Listener “Camera Auto” (igual que antes)
         // —————————————————————————
         btnCameraAuto.setOnClickListener {
-            // Salimos de “modo manual global”
             settingsVm.setManualMode(false)
 
             btnCameraManual.visibility = View.GONE
@@ -348,14 +389,13 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         }
 
         // —————————————————————————
-        // 9) Click listener “Exposure Compensation”
+        // 9) Listener “Exposure Compensation” (igual que antes)
         // —————————————————————————
         btnExposureCompensation.setOnClickListener {
             val cameraSource = (genericStream.videoSource as? CameraCalypsoSource) ?: return@setOnClickListener
             val currentlyActive = settingsVm.isExposureModeActive.value ?: false
 
             if (!currentlyActive) {
-                // Entramos modo “Exposure Compensation”
                 settingsVm.setExposureModeActive(true)
                 settingsVm.setIsISOModeActive(false)
                 settingsVm.setIsWBModeActive(false)
@@ -365,13 +405,11 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                 tvEvValue.visibility = View.VISIBLE
                 seekBarExposure.visibility = View.VISIBLE
 
-                // Restaurar progreso EV
                 val restored = settingsVm.seekBarProgress.value ?: DEFAULT_PROGRESS
                 seekBarExposure.max = 10
                 seekBarExposure.progress = restored
                 updateEvText(restored)
             } else {
-                // Salimos de modo
                 settingsVm.setExposureModeActive(false)
                 btnExposureCompensation.alpha = 0.8f
 
@@ -381,7 +419,7 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         }
 
         // —————————————————————————
-        // 10) CHANGE LISTENER SeekBar
+        // 10) CHANGE LISTENER SeekBar (igual que antes)
         // —————————————————————————
         seekBarExposure.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(sb: SeekBar, progress: Int, fromUser: Boolean) {
@@ -389,51 +427,43 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                 val cameraSource = genericStream.videoSource as? CameraCalypsoSource ?: return
 
                 when {
-                    // 1) MODO “Exposure Compensation”
                     settingsVm.isExposureModeActive.value == true -> {
                         settingsVm.setSeekBarProgress(progress)
                         updateEvText(progress)
                         applyExposureCompensation(progress)
                     }
-                    // 2) MODO “ISO”
                     settingsVm.isISOModeActive.value == true -> {
                         settingsVm.setIsoSeekProgress(progress)
                         applyISOSlider(progress, cameraSource)
                     }
-                    // 3) MODO “WHITE BALANCE”
                     settingsVm.isWBModeActive.value == true -> {
                         settingsVm.setWbSeekProgress(progress)
                         applyWbSlider(progress, cameraSource)
                     }
-                    // 4) MODO “EXPOSURE TIME”
                     settingsVm.isETModeActive.value == true -> {
                         settingsVm.setEtSeekProgress(progress)
                         applyEtSlider(progress, cameraSource)
                     }
                 }
             }
-            override fun onStartTrackingTouch(sb: SeekBar) { /*no-op*/ }
-            override fun onStopTrackingTouch(sb: SeekBar) { /*no-op*/ }
+            override fun onStartTrackingTouch(sb: SeekBar) { /* no-op */ }
+            override fun onStopTrackingTouch(sb: SeekBar) { /* no-op */ }
         })
 
         // —————————————————————————
-        // 11) Click listener “ISO”
+        // 11) Listener “ISO” (igual que antes)
         // —————————————————————————
         btnIso.setOnClickListener {
-            // Desactivar todos los modos manuales previos
             settingsVm.setExposureModeActive(false)
             settingsVm.setIsWBModeActive(false)
             settingsVm.setIsETModeActive(false)
 
-            // Toggle ISO mode
             val isoActive = settingsVm.isISOModeActive.value ?: false
             if (isoActive) {
-                // Ya estaba en ISO → lo apagamos
                 settingsVm.setIsISOModeActive(false)
                 tvEvValue.visibility = View.GONE
                 seekBarExposure.visibility = View.GONE
             } else {
-                // Entramos en ISO
                 settingsVm.setIsISOModeActive(true)
                 settingsVm.setIsWBModeActive(false)
                 settingsVm.setIsETModeActive(false)
@@ -446,15 +476,13 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         }
 
         // —————————————————————————
-        // 12) Click listener “White Balance”
+        // 12) Listener “White Balance” (igual que antes)
         // —————————————————————————
         btnWhiteBalance.setOnClickListener {
-            // Desactivar todos los modos manuales previos
             settingsVm.setExposureModeActive(false)
             settingsVm.setIsISOModeActive(false)
             settingsVm.setIsETModeActive(false)
 
-            // Toggle WB mode
             val wbActive = settingsVm.isWBModeActive.value ?: false
             if (wbActive) {
                 settingsVm.setIsWBModeActive(false)
@@ -473,15 +501,13 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         }
 
         // —————————————————————————
-        // 13) Click listener “Exposure Time”
+        // 13) Listener “Exposure Time” (igual que antes)
         // —————————————————————————
         btnExposureTime.setOnClickListener {
-            // Desactivar todos los modos manuales previos
             settingsVm.setExposureModeActive(false)
             settingsVm.setIsISOModeActive(false)
             settingsVm.setIsWBModeActive(false)
 
-            // Toggle ET mode
             val etActive = settingsVm.isETModeActive.value ?: false
             if (etActive) {
                 settingsVm.setIsETModeActive(false)
@@ -499,14 +525,93 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
             }
         }
 
-        // —————————————————————————
-        // 14) Restaurar UIState tras rotación / volver de fondo
-        // —————————————————————————
-        restoreUIState()
+        // —───────────────────────────────────────────
+        // 14) Configurar listeners de Zoom (“+” y “–”)
+        // —───────────────────────────────────────────
 
-        // —————————————————————————
-        // 15) Info de perfil
-        // —————————————————————————
+        // Zoom In: cuando se presiona, arrancamos la Runnable que va incrementando el zoom
+        btnZoomIn.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    isZoomingIn = true
+                    zoomHandler.post(zoomInRunnable)
+                    true
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    isZoomingIn = false
+                    zoomHandler.removeCallbacks(zoomInRunnable)
+                    true
+                }
+                else -> false
+            }
+        }
+
+        // Zoom Out: similar
+        btnZoomOut.setOnTouchListener { _, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    isZoomingOut = true
+                    zoomHandler.post(zoomOutRunnable)
+                    true
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    isZoomingOut = false
+                    zoomHandler.removeCallbacks(zoomOutRunnable)
+                    true
+                }
+                else -> false
+            }
+        }
+
+        // —───────────────────────────────────────────
+        // 15) Listeners de AUDIO
+        // —───────────────────────────────────────────
+
+        // 15.1) Botón “Volumen principal” (ic_volume_menu): despliega / oculta el panel
+        btnVolumeMenu.setOnClickListener {
+            val currentlyVisible = settingsVm.isVolumeMenuVisible.value ?: false
+            settingsVm.setVolumeMenuVisible(!currentlyVisible)
+        }
+
+        // 15.2) Botón “Mute / Unmute”: alterna icono y llama a audioSource.mute()/unMute()
+        btnMute.setOnClickListener {
+            val audioSource = genericStream.audioSource
+            if (audioSource is MicrophoneSource) {
+                val currentlyMuted = settingsVm.isMuted.value ?: false
+                if (currentlyMuted) {
+                    audioSource.unMute()
+                    settingsVm.setIsMuted(false)
+                } else {
+                    audioSource.mute()
+                    settingsVm.setIsMuted(true)
+                }
+            }
+        }
+
+        // 15.3) SeekBar vertical de volumen (0..100 → 0f..1f)
+        seekBarVolume.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(sb: SeekBar, progress: Int, fromUser: Boolean) {
+                if (!fromUser) return
+                val audioSource = genericStream.audioSource
+                if (audioSource is MicrophoneSource) {
+                    val newLevel = (progress / 100f).coerceIn(0f, 1f)
+                    audioSource.microphoneVolume = newLevel
+                    settingsVm.setVolumeLevel(newLevel)
+                    // Si estaba en "mute" y el usuario cambia volumen, podríamos auto-desmutear:
+                    if (settingsVm.isMuted.value == true) {
+                        audioSource.unMute()
+                        settingsVm.setIsMuted(false)
+                    }
+                }
+            }
+            override fun onStartTrackingTouch(sb: SeekBar) {}
+            override fun onStopTrackingTouch(sb: SeekBar) {}
+        })
+
+        // —───────────────────────────────────────────
+        // 15) Resto de inicializaciones (igual que antes)
+        // —───────────────────────────────────────────
+        restoreUIState()
         updateProfileInfo()
     }
 
@@ -785,6 +890,32 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                 }
             }, 300)
         }
+
+        // ────────────────────────────
+        // 3) REAPLICAR AJUSTES DE AUDIO
+        // ────────────────────────────
+        val audioSource = genericStream.audioSource
+        if (audioSource is MicrophoneSource) {
+            // 3.1) Nivel de volumen guardado
+            val savedLevel = settingsVm.volumeLevel.value ?: 1f
+            audioSource.microphoneVolume = savedLevel
+
+            // 3.2) Estado MUTE guardado
+            val savedMuted = settingsVm.isMuted.value ?: false
+            if (savedMuted) audioSource.mute() else audioSource.unMute()
+
+            // 3.3) Actualizar icono btnMute según savedMuted (el observe ya lo hizo, pero nos aseguramos)
+            val iconRes = if (savedMuted) R.drawable.ic_volume_menu else R.drawable.ic_mute
+            btnMute.setIconResource(iconRes)
+
+            // 3.4) Ajustar SeekBar de volumen a savedLevel (0..100)
+            val progress = (savedLevel * 100f).toInt().coerceIn(0, 100)
+            seekBarVolume.progress = progress
+        }
+
+        // 4) El panel de audio (volume_expandable) se muestra u oculta según el último flag (no persistido)
+        val showAudio = settingsVm.isVolumeMenuVisible.value ?: false
+        volumeExpandable.visibility = if (showAudio) View.VISIBLE else View.GONE
     }
 
     /**
@@ -795,6 +926,15 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
      *  4) ET (si guardó ≥0)
      */
     private fun applyAllSavedSettings(cameraSource: CameraCalypsoSource) {
+        // ────────── NUEVO: re-aplicar zoom guardado ──────────
+        val savedZoom = settingsVm.zoomLevel.value
+            ?: cameraSource.getZoomRange().lower
+        val range    = cameraSource.getZoomRange()
+        // Me aseguro de no salirme de los límites actuales
+        val coercedZoom = savedZoom.coerceIn(range.lower, range.upper)
+        cameraSource.setZoom(coercedZoom)
+        // ────────────────────────────────────────────────────
+
         // 1) Exposure Compensation
         val savedEv = settingsVm.seekBarProgress.value ?: DEFAULT_PROGRESS
         if (savedEv != DEFAULT_PROGRESS) {
@@ -814,7 +954,6 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         if (modesList.isNotEmpty()) {
             val savedWbProg = settingsVm.wbSeekProgress.value ?: -1
             if (savedWbProg < 0) {
-                // auto AWB
                 cameraSource.enableAutoWhiteBalance(CameraCharacteristics.CONTROL_AWB_MODE_AUTO)
             } else {
                 applyWbSlider(savedWbProg, cameraSource)
@@ -870,5 +1009,78 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
             tvProfileInfo.text = "Default: 1080p @30fps RTMP: None"
         }
         tvProfileInfo.visibility = View.VISIBLE
+    }
+
+    // Runnable para hacer zoom in progresivo y guardar el nivel en el ViewModel
+    private val zoomInRunnable = object : Runnable {
+        override fun run() {
+            val cameraSource = (genericStream.videoSource as? CameraCalypsoSource) ?: return
+            if (!cameraSource.isRunning()) {
+                // Si la cámara aún no está lista, volvemos a intentar en 100 ms
+                zoomHandler.postDelayed(this, 50)
+                return
+            }
+
+            // 1) Leemos el rango válido de zoom
+            val range = cameraSource.getZoomRange()
+            val minZ = range.lower
+            val maxZ = range.upper
+
+            // 2) Leemos el valor de zoom actual
+            val currentZoom = cameraSource.getZoom()
+
+            // 3) Calculamos un paso pequeño (por ejemplo 0.5% del rango total)
+            val step = (maxZ - minZ) * 0.003f
+
+            // 4) Definimos `nextZoom`, que es currentZoom + step, coercionándolo al máximo
+            val nextZoom = (currentZoom + step).coerceAtMost(maxZ)
+
+            // 5) Aplicamos el nuevo zoom en el hardware
+            cameraSource.setZoom(nextZoom)
+
+            // 6) Guardamos ese valor en el ViewModel para persistir estado
+            settingsVm.setZoomLevel(nextZoom)
+
+            // 7) Si el usuario sigue manteniendo pulsado, re-lanzamos dentro de 100 ms
+            if (isZoomingIn) {
+                zoomHandler.postDelayed(this, 50)
+            }
+        }
+    }
+
+    // Runnable para hacer zoom out progresivo y guardar el nivel en el ViewModel
+    private val zoomOutRunnable = object : Runnable {
+        override fun run() {
+            val cameraSource = (genericStream.videoSource as? CameraCalypsoSource) ?: return
+            if (!cameraSource.isRunning()) {
+                zoomHandler.postDelayed(this, 50)
+                return
+            }
+
+            // 1) Leemos el rango válido de zoom
+            val range = cameraSource.getZoomRange()
+            val minZ = range.lower
+            val maxZ = range.upper
+
+            // 2) Leemos el valor de zoom actual
+            val currentZoom = cameraSource.getZoom()
+
+            // 3) Calculamos un paso pequeño (por ejemplo 0.5% del rango total)
+            val step = (maxZ - minZ) * 0.003f
+
+            // 4) Definimos `nextZoom`, que es currentZoom - step, coercionándolo al mínimo
+            val nextZoom = (currentZoom - step).coerceAtLeast(minZ)
+
+            // 5) Aplicamos el nuevo zoom en el hardware
+            cameraSource.setZoom(nextZoom)
+
+            // 6) Guardamos ese valor en el ViewModel para persistir estado
+            settingsVm.setZoomLevel(nextZoom)
+
+            // 7) Si el usuario sigue manteniendo pulsado, re-lanzamos dentro de 100 ms
+            if (isZoomingOut) {
+                zoomHandler.postDelayed(this, 50)
+            }
+        }
     }
 }
