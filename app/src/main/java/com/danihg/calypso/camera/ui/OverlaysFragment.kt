@@ -6,7 +6,6 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.os.Bundle
-import android.util.Log
 import android.view.View
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
@@ -19,10 +18,10 @@ import com.danihg.calypso.overlays.filter.ScoreboardOverlayGenerator
 import com.google.android.material.button.MaterialButton
 import com.pedro.encoder.input.gl.render.filters.`object`.ImageObjectFilterRender
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.net.URL
-
 
 class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
 
@@ -33,70 +32,46 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
     private lateinit var btnScoreboardOverlay: MaterialButton
     private lateinit var btnOverlaysMenu: MaterialButton
 
-    // 1) Nuestro filtro GL que mostrará el PNG descargado
     private val scoreboardFilter by lazy { ImageObjectFilterRender() }
     private var logo1Bmp: Bitmap? = null
     private var logo2Bmp: Bitmap? = null
-
-    // 2) Aquí guardamos el Bitmap descargado (full / no_logo)
     private var snapshotBmp: Bitmap? = null
-
-    private var isScoreboardAttached = false
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         btnScoreboardOverlay = view.findViewById(R.id.btnScoreboardOverlay)
         btnOverlaysMenu      = view.findViewById(R.id.btnOverlaysMenu)
 
-        // 1) Show/hide based on having a configured scoreboard
+        // 1) Mostrar/ocultar toggle
         vm.selectedScoreboard.observe(viewLifecycleOwner) { name ->
-            val configured = name.isNotBlank()
-            btnScoreboardOverlay.visibility = if (configured) View.VISIBLE else View.GONE
-            if (!configured) {
-                // reset active if user cleared config
-                vm.setScoreboardEnabled(false)
+            val ok = name.isNotBlank()
+            btnScoreboardOverlay.visibility = if (ok) View.VISIBLE else View.GONE
+            if (!ok) vm.setScoreboardEnabled(false)
+        }
+
+        // 2) Estado checked + aplicar/quitar filtro
+        vm.scoreboardEnabled.observe(viewLifecycleOwner) { enabled ->
+            btnScoreboardOverlay.isChecked = enabled
+            val bgColor = if (enabled) ContextCompat.getColor(requireContext(), R.color.calypso_red)
+            else Color.TRANSPARENT
+            btnScoreboardOverlay.backgroundTintList = ColorStateList.valueOf(bgColor)
+            val iconColor = if (enabled) Color.BLACK else ContextCompat.getColor(requireContext(), R.color.white)
+            btnScoreboardOverlay.iconTint = ColorStateList.valueOf(iconColor)
+
+            if (enabled) {
+                if (snapshotBmp != null) {
+                    reattachFilter()
+                } else {
+                    attachSnapshotOverlay()
+                }
+            } else {
+                genericStream.getGlInterface().removeFilter(scoreboardFilter)
             }
         }
 
-        // 2) Paint checked / tint & attach/detach filter
-        vm.scoreboardEnabled.observe(viewLifecycleOwner) { enabled ->
-            // 1) Visibilidad: ya controlas que solo se muestre si hay scoreboard configurado
-
-            // 2) Checked state (para isChecked si lo necesitas)
-            btnScoreboardOverlay.isChecked = enabled
-
-            // 3) Fondo calypso_red cuando está activo; transparente cuando no
-            val bgColor = if (enabled)
-                ContextCompat.getColor(requireContext(), R.color.calypso_red)
-            else
-                Color.TRANSPARENT
-            btnScoreboardOverlay.backgroundTintList = ColorStateList.valueOf(bgColor)
-
-            // 4) Icono negro cuando está activo; blanco cuando no
-            val iconColor = if (enabled)
-                Color.BLACK
-            else
-                ContextCompat.getColor(requireContext(), R.color.white)
-            btnScoreboardOverlay.iconTint = ColorStateList.valueOf(iconColor)
-            // add/remove filter
-            if (enabled){
-                if (!isScoreboardAttached) attachSnapshotOverlay()
-            } else
-                if (isScoreboardAttached) {
-                    genericStream.getGlInterface().removeFilter(scoreboardFilter)
-                    isScoreboardAttached = false
-                }
-//            if (enabled) attachScoreboardFilter() else detachScoreboardFilter()
-        }
-
-        // 3) Toggle on/off when click
         btnScoreboardOverlay.setOnClickListener {
-            val next = !(vm.scoreboardEnabled.value ?: false)
-            vm.setScoreboardEnabled(next)
-            Log.d("OverlaysFragment", "Scoreboard toggle → $next")
+            vm.setScoreboardEnabled(!(vm.scoreboardEnabled.value ?: false))
         }
-
-        // 4) Open settings
         btnOverlaysMenu.setOnClickListener {
             parentFragmentManager.beginTransaction()
                 .replace(R.id.overlays_container, OverlaysSettingsFragment())
@@ -107,92 +82,103 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
 
     override fun onResume() {
         super.onResume()
-        // Si volvemos de background y estaba activo y ya tenemos snapshot, lo reaplicamos
-        if (vm.scoreboardEnabled.value == true
-            && snapshotBmp  != null
-            && !isScoreboardAttached
-        ) {
-            try {
-                ScoreboardOverlayGenerator.updateOverlay(
-                    snapshot = snapshotBmp,
-                    logo1    = logo1Bmp,
-                    logo2    = logo2Bmp,
-                    filter   = scoreboardFilter
-                )
-                genericStream.getGlInterface().addFilter(scoreboardFilter)
-                isScoreboardAttached = true
-            } catch (_: Exception) { /* ignora */ }
+        if (vm.scoreboardEnabled.value == true && snapshotBmp != null) {
+            reattachFilter()
         }
+    }
+    
+
+    private fun reattachFilter() {
+        // vuelve a componer y re-aplicar escala/posición
+        ScoreboardOverlayGenerator.updateOverlay(
+            snapshot = snapshotBmp,
+            logo1    = logo1Bmp,
+            logo2    = logo2Bmp,
+            alias1   = vm.teams.value
+                ?.firstOrNull { it.name == vm.selectedTeam1.value }
+                ?.alias.orEmpty(),
+            alias2   = vm.teams.value
+                ?.firstOrNull { it.name == vm.selectedTeam2.value }
+                ?.alias.orEmpty(),
+            filter   = scoreboardFilter
+        )
+        applyScaleAndPosition(snapshotBmp!!)
+        genericStream.getGlInterface().addFilter(scoreboardFilter)
     }
 
     private fun attachSnapshotOverlay() {
-        // 1) Obtén el objeto ScoreboardItem según selección
-        val item = vm.scoreboards.value
-            ?.firstOrNull { it.name == vm.selectedScoreboard.value }
-        val key = if (vm.showLogos.value == true) "full" else "no_logo"
-        val url = item?.snapshots?.get(key).orEmpty()
-        if (url.isBlank()) return
+        lifecycleScope.launch {
+            val item = vm.scoreboards.value
+                ?.firstOrNull { it.name == vm.selectedScoreboard.value }
+            val key = if (vm.showLogos.value == true) "full" else "no_logo"
+            val url = item?.snapshots?.get(key).orEmpty()
+            if (url.isBlank()) return@launch
 
-        // 2) Descarga en background y actualiza filtro
-        lifecycleScope.launch(Dispatchers.IO) {
-            try {
-                // Descarga principal (snapshot)
-                val bmpSnapshot = URL(url).openStream().use {
-                    BitmapFactory.decodeStream(it)
-                }
-                // Descarga logo1 (usa la URL guardada en el ViewModel)
-                val team1 = vm.teams.value?.firstOrNull { it.name == vm.selectedTeam1.value }
-                val bmpLogo1 = team1?.logoUrl?.let { logoUrl ->
-                    URL(logoUrl).openStream().use { BitmapFactory.decodeStream(it) }
-                }
-                // Descarga logo2
-                val team2 = vm.teams.value?.firstOrNull { it.name == vm.selectedTeam2.value }
-                val bmpLogo2 = team2?.logoUrl?.let { logoUrl ->
-                    URL(logoUrl).openStream().use { BitmapFactory.decodeStream(it) }
-                }
-
-                withContext(Dispatchers.Main) {
-                    snapshotBmp = bmpSnapshot
-                    logo1Bmp    = bmpLogo1
-                    logo2Bmp    = bmpLogo2
-
-                    // 3) Componer overlay
-                    ScoreboardOverlayGenerator.updateOverlay(
-                        snapshot = snapshotBmp,
-                        logo1    = logo1Bmp,
-                        logo2    = logo2Bmp,
-                        filter   = scoreboardFilter
-                    )
-
-                    // 4) Escala y posición según orientación
-                    val aspect = bmpSnapshot.height.toFloat() / bmpSnapshot.width
-                    val isLandscape = resources.configuration.orientation ==
-                            Configuration.ORIENTATION_LANDSCAPE
-
-                    val (scaleX, scaleY, posX, posY) = if (isLandscape) {
-                        val sx = 0.25f * 100f
-                        val sy = sx * aspect * 2f
-                        Quadruple(sx, sy, 5f, 5f)
-                    } else {
-                        val sx = 0.5f * 100f
-                        val sy = sx * aspect * 0.6f
-                        Quadruple(sx, sy, 25f, 90f)
-                    }
-
-                    scoreboardFilter.setScale(scaleX, scaleY)
-                    scoreboardFilter.setPosition(posX, posY)
-
-                    genericStream.getGlInterface().addFilter(scoreboardFilter)
-                    isScoreboardAttached = true
-                }
-            } catch (e: Exception) {
-                Log.e("OverlaysFragment", "Error descargando snapshot o logos", e)
+            // 1) Descargar snapshot
+            val bmpSnapshot = withContext(Dispatchers.IO) {
+                URL(url).openStream().use { BitmapFactory.decodeStream(it) }
             }
+            snapshotBmp = bmpSnapshot
+
+            // 2) Pintar snapshot inmediato (sin logos)
+            ScoreboardOverlayGenerator.updateOverlay(
+                snapshot = bmpSnapshot,
+                logo1    = null,
+                logo2    = null,
+                alias1   = "",
+                alias2   = "",
+                filter   = scoreboardFilter
+            )
+            applyScaleAndPosition(bmpSnapshot)
+            genericStream.getGlInterface().addFilter(scoreboardFilter)
+
+            // 3) Descargar logos en paralelo
+            val team1 = vm.teams.value
+                ?.firstOrNull { it.name == vm.selectedTeam1.value }
+            val team2 = vm.teams.value
+                ?.firstOrNull { it.name == vm.selectedTeam2.value }
+            val d1 = async(Dispatchers.IO) {
+                team1?.logoUrl?.let { URL(it).openStream().use { s -> BitmapFactory.decodeStream(s) } }
+            }
+            val d2 = async(Dispatchers.IO) {
+                team2?.logoUrl?.let { URL(it).openStream().use { s -> BitmapFactory.decodeStream(s) } }
+            }
+            logo1Bmp = d1.await()
+            logo2Bmp = d2.await()
+
+            // 4) Recompone con logos y aliases
+            ScoreboardOverlayGenerator.updateOverlay(
+                snapshot = bmpSnapshot,
+                logo1    = logo1Bmp,
+                logo2    = logo2Bmp,
+                alias1   = team1?.alias.orEmpty(),
+                alias2   = team2?.alias.orEmpty(),
+                filter   = scoreboardFilter
+            )
+            // la textura del filtro cambia en caliente, no hay que re-addFilter
         }
     }
 
-    private data class Quadruple<A, B, C, D>(
+    private fun applyScaleAndPosition(bmp: Bitmap) {
+        val aspect = bmp.height.toFloat() / bmp.width
+        val isLandscape = resources.configuration.orientation ==
+                Configuration.ORIENTATION_LANDSCAPE
+        val (sx, sy, px, py) = if (isLandscape) {
+            // landscape: más ancho, menos alto, arriba-izquierda
+            val sxL = 0.25f * 100f
+            val syL = sxL * aspect * 2f
+            Quad(sxL, syL, 5f, 5f)
+        } else {
+            // portrait: ancho 50%, alto proporcional, abajo-centro
+            val sxP = 0.5f * 100f
+            val syP = sxP * aspect * 0.6f
+            Quad(sxP, syP, 25f, 90f)
+        }
+        scoreboardFilter.setScale(sx, sy)
+        scoreboardFilter.setPosition(px, py)
+    }
+
+    private data class Quad<A, B, C, D>(
         val first: A, val second: B, val third: C, val fourth: D
     )
 }
-
