@@ -11,6 +11,7 @@ import android.util.Log
 import android.util.TypedValue
 import android.view.MotionEvent
 import android.view.View
+import android.widget.FrameLayout
 import android.widget.SeekBar
 import android.widget.TextView
 import androidx.core.view.isGone
@@ -311,6 +312,9 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                     .addToBackStack(null)
                     .commit()
             }
+            requireActivity()
+                .findViewById<FrameLayout>(R.id.overlays_container)
+                .visibility = View.GONE
         }
 
         // —————————————————————————
@@ -617,6 +621,9 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
 
     override fun onResume() {
         super.onResume()
+        requireActivity()
+            .findViewById<FrameLayout>(R.id.overlays_container)
+            .visibility = View.VISIBLE
         restoreUIState()
     }
 

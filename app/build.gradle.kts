@@ -48,6 +48,10 @@ dependencies {
     implementation(libs.firebase.firestore)
     implementation(libs.firebase.crashlytics)
 
+    // Image Load
+    implementation("io.coil-kt:coil:2.4.0")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-savedstate:2.9.1")
+
     // Google Play Services
     implementation(libs.play.services.auth)
 

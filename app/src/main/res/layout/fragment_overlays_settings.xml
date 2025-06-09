@@ -1,0 +1,303 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/dark_gray">
+
+    <!-- Botón de cerrar (pequeño cuadrado con X) -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnCloseOverlaysSettings"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:layout_gravity="top|end"
+        android:layout_margin="16dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:padding="0dp"
+        app:icon="@drawable/ic_close"
+        app:iconTint="@color/WHITE"
+        app:iconGravity="textStart"
+        app:iconPadding="0dp"
+        app:backgroundTint="@android:color/transparent"
+        app:cornerRadius="16dp" />
+
+    <!-- Scroll + accordion “Teams” -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginTop="64dp"
+        android:padding="16dp">
+
+        <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <!-- Panel “Teams” -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_teams"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardElevation="4dp"
+                app:cardCornerRadius="8dp"
+                android:layout_marginBottom="12dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <LinearLayout
+                    android:orientation="vertical"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+
+                    <!-- Header -->
+                    <LinearLayout
+                        android:id="@+id/header_teams"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Teams"
+                            android:textSize="18sp"
+                            android:textStyle="bold" />
+
+                        <ImageView
+                            android:id="@+id/iv_teams_arrow"
+                            android:layout_width="34dp"
+                            android:layout_height="34dp"
+                            android:padding="8dp"
+                            android:src="@drawable/ic_arrow_down"
+                            app:tint="@color/white" />
+                    </LinearLayout>
+
+                    <!-- Body (arranca oculto) -->
+                    <LinearLayout
+                        android:id="@+id/body_teams"
+                        android:orientation="horizontal"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:visibility="gone"
+                        android:padding="12dp">
+
+                        <!-- Equipo 1 -->
+                        <LinearLayout
+                            android:orientation="vertical"
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:layout_height="wrap_content"
+                            android:padding="8dp">
+
+                            <com.google.android.material.textfield.TextInputLayout
+                                android:id="@+id/til_team1"
+                                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:hint="Equipo 1">
+
+                                <AutoCompleteTextView
+                                    android:id="@+id/act_team1"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:inputType="none" />
+                            </com.google.android.material.textfield.TextInputLayout>
+
+                            <FrameLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="12dp"
+                                android:gravity="center">
+
+                                <ImageView
+                                    android:id="@+id/iv_team1_logo"
+                                    android:layout_width="100dp"
+                                    android:layout_height="100dp"
+                                    android:layout_gravity="center_horizontal"
+                                    android:scaleType="centerCrop"
+                                    android:src="@drawable/ic_image_placeholder" />
+
+                                <ProgressBar
+                                    android:id="@+id/progress_team1"
+                                    style="?android:attr/progressBarStyleLarge"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:indeterminateTint="@color/calypso_red"
+                                    android:layout_gravity="center"
+                                    android:visibility="gone" />
+                            </FrameLayout>
+                        </LinearLayout>
+
+                        <!-- Equipo 2 -->
+                        <LinearLayout
+                            android:orientation="vertical"
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:layout_height="wrap_content"
+                            android:padding="8dp">
+
+                            <com.google.android.material.textfield.TextInputLayout
+                                android:id="@+id/til_team2"
+                                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:hint="Equipo 2">
+
+                                <AutoCompleteTextView
+                                    android:id="@+id/act_team2"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:inputType="none" />
+                            </com.google.android.material.textfield.TextInputLayout>
+
+                            <FrameLayout
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="12dp"
+                                android:gravity="center">
+
+                                <ImageView
+                                    android:id="@+id/iv_team2_logo"
+                                    android:layout_width="100dp"
+                                    android:layout_height="100dp"
+                                    android:layout_gravity="center_horizontal"
+                                    android:scaleType="centerCrop"
+                                    android:src="@drawable/ic_image_placeholder" />
+
+                                <ProgressBar
+                                    android:id="@+id/progress_team2"
+                                    style="?android:attr/progressBarStyleLarge"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:indeterminateTint="@color/calypso_red"
+                                    android:layout_gravity="center"
+                                    android:visibility="gone" />
+                            </FrameLayout>
+                        </LinearLayout>
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Scoreboard -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_scoreboard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardElevation="4dp"
+                app:cardCornerRadius="8dp"
+                android:layout_marginBottom="12dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <LinearLayout
+                    android:orientation="vertical"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+
+                    <!-- Header -->
+                    <LinearLayout
+                        android:id="@+id/header_scoreboard"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Scoreboard"
+                            android:textSize="18sp"
+                            android:textStyle="bold"/>
+                        <ImageView
+                            android:id="@+id/iv_scoreboard_arrow"
+                            android:layout_width="34dp"
+                            android:layout_height="34dp"
+                            android:padding="8dp"
+                            android:src="@drawable/ic_arrow_down"
+                            app:tint="@color/white"/>
+                    </LinearLayout>
+
+                    <!-- Body -->
+                    <LinearLayout
+                        android:id="@+id/body_scoreboard"
+                        android:orientation="vertical"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:visibility="gone"
+                        android:padding="12dp">
+
+                        <!-- Dropdown -->
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:id="@+id/til_scoreboard"
+                            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="Select Scoreboard">
+
+                            <AutoCompleteTextView
+                                android:id="@+id/act_scoreboard"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="none"/>
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <!-- Logo + Spinner -->
+                        <FrameLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="24dp"
+                            android:gravity="center">
+
+                            <ImageView
+                                android:id="@+id/iv_scoreboard_logo"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_gravity="center"
+                                android:adjustViewBounds="true"
+                                android:maxWidth="300dp"
+                                android:maxHeight="200dp"
+                                android:scaleType="centerInside"
+                                android:src="@drawable/ic_image_placeholder"/>
+                            <ProgressBar
+                                android:id="@+id/progress_scoreboard"
+                                style="?android:attr/progressBarStyleLarge"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:indeterminateTint="@color/calypso_red"
+                                android:layout_gravity="center"
+                                android:visibility="gone"/>
+
+                        </FrameLayout>
+
+                        <!-- Checkbox “Show logos” -->
+                        <CheckBox
+                            android:id="@+id/cb_show_logos"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="24dp"
+                            android:text="Show logos"
+                            android:textColor="@color/white"
+                            android:checked="true"/>
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSaveOverlays"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Guardar cambios"
+                android:layout_marginTop="16dp"
+                app:backgroundTint="@color/calypso_red"
+                android:textColor="@android:color/white"
+                app:cornerRadius="4dp" />
+        </LinearLayout>
+    </ScrollView>
+</FrameLayout>

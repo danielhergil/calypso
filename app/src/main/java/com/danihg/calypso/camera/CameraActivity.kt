@@ -9,6 +9,7 @@ import android.view.WindowManager
 import androidx.appcompat.app.AppCompatActivity
 import com.danihg.calypso.R
 import com.danihg.calypso.camera.ui.CameraControlsFragment
+import com.danihg.calypso.camera.ui.OverlaysFragment
 import com.danihg.calypso.camera.ui.SettingsFragment
 
 class CameraActivity : AppCompatActivity() {
@@ -26,6 +27,7 @@ class CameraActivity : AppCompatActivity() {
                 .replace(R.id.camera_container, CameraFragment.newInstance())
                 .replace(R.id.controls_container, CameraControlsFragment())
                 .replace(R.id.settings_container, SettingsFragment())
+                .replace(R.id.overlays_container, OverlaysFragment())
                 .commit()
         }
     }
