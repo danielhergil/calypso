@@ -3,16 +3,17 @@ package com.danihg.calypso.camera.ui
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.res.Configuration
 import android.hardware.camera2.CameraCharacteristics
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.util.TypedValue
-import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.widget.FrameLayout
+import android.widget.LinearLayout
 import android.widget.RelativeLayout
 import android.widget.SeekBar
 import android.widget.TextView
@@ -121,16 +122,33 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         val root = requireActivity().findViewById<FrameLayout>(R.id.overlays_container)
         val audio = view.findViewById<RelativeLayout>(R.id.audio_controls_container)
 
-        root.post {
-            val parentH = root.height
-            val percent = 0.08f      // 15%
-            val topMarginPx = (parentH * percent).toInt()
+        val config = resources.configuration
+        val isLandscape = config.orientation == Configuration.ORIENTATION_LANDSCAPE
+        val screenWidthPx = resources.displayMetrics.widthPixels
 
-            val lp = audio.layoutParams as FrameLayout.LayoutParams
-            lp.topMargin = topMarginPx
-            lp.gravity = lp.gravity or Gravity.END
-            audio.layoutParams = lp
+        if (isLandscape && screenWidthPx > 2100) {
+            val zoomControls = view.findViewById<LinearLayout>(R.id.zoom_controls)
+            val audioControls = view.findViewById<RelativeLayout>(R.id.audio_controls_container)
+
+            val lpZoom = zoomControls.layoutParams as FrameLayout.LayoutParams
+            lpZoom.marginStart = 220
+            zoomControls.layoutParams = lpZoom
+
+            val lpAudio = audioControls.layoutParams as FrameLayout.LayoutParams
+            lpAudio.marginStart = 220
+            audioControls.layoutParams = lpAudio
         }
+
+//        root.post {
+//            val parentH = root.height
+//            val percent = 0.08f      // 15%
+//            val topMarginPx = (parentH * percent).toInt()
+//
+//            val lp = audio.layoutParams as FrameLayout.LayoutParams
+//            lp.topMargin = topMarginPx
+//            lp.gravity = lp.gravity or Gravity.END
+//            audio.layoutParams = lp
+//        }
 
         // —————————————————————————
         // 3.2) Ajuste dinámico tamaño tvProfileInfo (igual que antes)
@@ -138,6 +156,14 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         val metrics = requireContext().resources.displayMetrics
         val anchoDp = metrics.widthPixels / metrics.density
         val sizeSp = if (anchoDp < 390f) 8f else 10f
+
+        val screenW = metrics.widthPixels.toFloat()
+        val screenH = metrics.heightPixels.toFloat()
+
+        if (screenH > 2100) {
+            val lp = audio.layoutParams as FrameLayout.LayoutParams
+            lp.topMargin = 210
+        }
         tvProfileInfo.setTextSize(TypedValue.COMPLEX_UNIT_SP, sizeSp)
 
         // —————————————————————————

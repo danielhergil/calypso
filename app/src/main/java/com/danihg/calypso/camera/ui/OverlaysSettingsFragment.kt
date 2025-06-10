@@ -172,18 +172,17 @@ class OverlaysSettingsFragment : Fragment(R.layout.fragment_overlays_settings) {
             progressBar.visibility = View.GONE
             imageView.setImageResource(R.drawable.ic_image_placeholder)
             imageView.visibility = View.VISIBLE
-        } else {
-            imageView.visibility = View.INVISIBLE
-            progressBar.visibility = View.VISIBLE
-            progressBar.bringToFront()
+            return
+        }
 
-            // Calculamos tamaño real del ImageView
-            imageView.post {
-                val targetWidth = imageView.width
-                val targetHeight = imageView.height
+        // Esperar a que imageView esté medido
+        imageView.post {
+            val targetWidth = imageView.width
+            val targetHeight = imageView.height
 
+            // Protección extra: evitar crash si el tamaño sigue sin estar disponible
+            if (targetWidth <= 0 || targetHeight <= 0) {
                 imageView.load(url) {
-                    size(targetWidth, targetHeight) // Fuerza reescalado a tamaño de destino
                     scale(coil.size.Scale.FIT)
                     placeholder(null)
                     error(R.drawable.ic_image_placeholder)
@@ -202,6 +201,28 @@ class OverlaysSettingsFragment : Fragment(R.layout.fragment_overlays_settings) {
                         }
                     )
                 }
+                return@post
+            }
+
+            imageView.load(url) {
+                size(targetWidth, targetHeight)  // solo si los valores son válidos
+                scale(coil.size.Scale.FIT)
+                placeholder(null)
+                error(R.drawable.ic_image_placeholder)
+                listener(
+                    onStart = {
+                        progressBar.visibility = View.VISIBLE
+                        imageView.visibility = View.INVISIBLE
+                    },
+                    onSuccess = { _, _ ->
+                        progressBar.visibility = View.GONE
+                        imageView.visibility = View.VISIBLE
+                    },
+                    onError = { _, _ ->
+                        progressBar.visibility = View.GONE
+                        imageView.visibility = View.VISIBLE
+                    }
+                )
             }
         }
     }
