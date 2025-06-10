@@ -5,6 +5,65 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <!-- Contenedor de botones de puntuación -->
+    <LinearLayout
+        android:id="@+id/score_buttons_container"
+        android:orientation="horizontal"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="130dp">
+
+        <!-- Team 1: Decrementar -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_dec_team1"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="30dp"
+            android:layout_height="35dp"
+            app:icon="@drawable/ic_decrease"
+            app:iconSize="18dp"
+            app:iconGravity="textTop"
+            app:backgroundTint="#CCFFFFFF"
+            android:layout_marginEnd="8dp"/>
+
+        <!-- Team 1: Incrementar -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_inc_team1"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="30dp"
+            android:layout_height="35dp"
+            app:icon="@drawable/ic_add"
+            app:iconSize="18dp"
+            app:iconGravity="textTop"
+            app:backgroundTint="#CCFFFFFF"
+            android:layout_marginEnd="24dp"/>
+
+        <!-- Team 2: Decrementar -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_dec_team2"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="30dp"
+            android:layout_height="35dp"
+            app:icon="@drawable/ic_decrease"
+            app:iconSize="18dp"
+            app:iconGravity="textTop"
+            app:backgroundTint="#CCFFFFFF"
+            android:layout_marginEnd="8dp"/>
+
+        <!-- Team 2: Incrementar -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_inc_team2"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="30dp"
+            android:layout_height="35dp"
+            app:icon="@drawable/ic_add"
+            app:iconSize="18dp"
+            app:iconGravity="textTop"
+            app:backgroundTint="#CCFFFFFF"/>
+
+    </LinearLayout>
+
     <LinearLayout
         android:id="@+id/overlays_menu"
         android:orientation="vertical"
@@ -13,6 +72,7 @@
         android:layout_gravity="bottom|end"
         android:layout_marginEnd="26dp"
         android:layout_marginBottom="80dp">
+
 
         <!-- 1) Toggle “Scoreboard Overlay” (invisible por defecto) -->
         <com.google.android.material.button.MaterialButton

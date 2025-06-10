@@ -9,9 +9,11 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.util.TypedValue
+import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.widget.FrameLayout
+import android.widget.RelativeLayout
 import android.widget.SeekBar
 import android.widget.TextView
 import androidx.core.view.isGone
@@ -115,6 +117,20 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         btnMute                   = view.findViewById(R.id.btnMute)
         volumeExpandable          = view.findViewById(R.id.volume_expandable)
         seekBarVolume             = view.findViewById(R.id.seekBarVolume)
+
+        val root = requireActivity().findViewById<FrameLayout>(R.id.overlays_container)
+        val audio = view.findViewById<RelativeLayout>(R.id.audio_controls_container)
+
+        root.post {
+            val parentH = root.height
+            val percent = 0.08f      // 15%
+            val topMarginPx = (parentH * percent).toInt()
+
+            val lp = audio.layoutParams as FrameLayout.LayoutParams
+            lp.topMargin = topMarginPx
+            lp.gravity = lp.gravity or Gravity.END
+            audio.layoutParams = lp
+        }
 
         // —————————————————————————
         // 3.2) Ajuste dinámico tamaño tvProfileInfo (igual que antes)

@@ -4,6 +4,65 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <!-- Controles de score en landscape: arriba a la izquierda -->
+    <LinearLayout
+        android:id="@+id/score_buttons_container"
+        android:orientation="horizontal"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|start"
+        android:layout_marginStart="100dp"
+        android:layout_marginTop="40dp"
+        android:gravity="center_vertical">
+
+        <!-- Team 1: Decrementar -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_dec_team1"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="30dp"
+            android:layout_height="35dp"
+            app:icon="@drawable/ic_decrease"
+            app:iconSize="18dp"
+            app:iconGravity="textTop"
+            app:backgroundTint="#CCFFFFFF"
+            android:layout_marginEnd="8dp"/>
+
+        <!-- Team 1: Incrementar -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_inc_team1"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="30dp"
+            android:layout_height="35dp"
+            app:icon="@drawable/ic_add"
+            app:iconSize="18dp"
+            app:iconGravity="textTop"
+            app:backgroundTint="#CCFFFFFF"
+            android:layout_marginEnd="24dp"/>
+
+        <!-- Team 2: Decrementar -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_dec_team2"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="30dp"
+            android:layout_height="35dp"
+            app:icon="@drawable/ic_decrease"
+            app:iconSize="18dp"
+            app:iconGravity="textTop"
+            app:backgroundTint="#CCFFFFFF"
+            android:layout_marginEnd="8dp"/>
+
+        <!-- Team 2: Incrementar -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_inc_team2"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="30dp"
+            android:layout_height="35dp"
+            app:icon="@drawable/ic_add"
+            app:iconSize="18dp"
+            app:iconGravity="textTop"
+            app:backgroundTint="#CCFFFFFF"/>
+    </LinearLayout>
+
     <LinearLayout
         android:id="@+id/overlays_menu"
         android:orientation="horizontal"

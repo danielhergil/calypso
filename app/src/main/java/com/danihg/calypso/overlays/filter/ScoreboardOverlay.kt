@@ -25,7 +25,9 @@ object ScoreboardOverlayGenerator {
         logo1: Bitmap?,
         logo2: Bitmap?,
         alias1: String,
-        alias2: String
+        alias2: String,
+        score1: Int,
+        score2: Int
     ): Bitmap {
         val w = snapshot.width
         val h = snapshot.height
@@ -38,6 +40,13 @@ object ScoreboardOverlayGenerator {
         // prepara paint para los alias
         val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = android.graphics.Color.BLACK
+            textSize = h * 0.5f  // 15% de la altura del snapshot
+            textAlign = Paint.Align.LEFT
+            isFakeBoldText = true
+        }
+
+        val scorePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = android.graphics.Color.WHITE
             textSize = h * 0.5f  // 15% de la altura del snapshot
             textAlign = Paint.Align.LEFT
             isFakeBoldText = true
@@ -58,6 +67,15 @@ object ScoreboardOverlayGenerator {
             // baseLine: centrado vertical en el logo
             val yAlias1 = top + targetH/2f - (textPaint.descent()+textPaint.ascent())/2f
             canvas.drawText(alias1, xAlias1, yAlias1, textPaint)
+
+            // score1 (rojo, negrita)
+            if (score1 > 9) {
+                val scoreX = xAlias1 + scorePaint.measureText(alias1) + 60f
+                canvas.drawText(score1.toString(), scoreX, yAlias1, scorePaint)
+            } else {
+                val scoreX = xAlias1 + scorePaint.measureText(alias1) + 70f
+                canvas.drawText(score1.toString(), scoreX, yAlias1, scorePaint)
+            }
         }
 
         // 3) dibujamos logo2 y alias2
@@ -75,6 +93,15 @@ object ScoreboardOverlayGenerator {
             val xAlias2 = left - 45f
             val yAlias2 = top + targetH/2f - (textPaint.descent()+textPaint.ascent())/2f
             canvas.drawText(alias2, xAlias2, yAlias2, textPaint)
+
+            // alias2 a la izquierda de score
+            if (score2 > 9) {
+                val scoreX = xAlias2 - scorePaint.measureText(alias2) - 100f
+                canvas.drawText(score2.toString(), scoreX, yAlias2, scorePaint)
+            } else {
+                val scoreX = xAlias2 - scorePaint.measureText(alias2) - 90f
+                canvas.drawText(score2.toString(), scoreX, yAlias2, scorePaint)
+            }
         }
 
         return bmp
@@ -89,11 +116,13 @@ object ScoreboardOverlayGenerator {
         logo2: Bitmap?,
         alias1: String,
         alias2: String,
+        score1: Int,
+        score2: Int,
         filter: ImageObjectFilterRender
     ) {
         Handler(Looper.getMainLooper()).post {
             if (snapshot != null) {
-                val composite = createCompositeBitmap(snapshot, logo1, logo2, alias1, alias2)
+                val composite = createCompositeBitmap(snapshot, logo1, logo2, alias1, alias2, score1, score2)
                 filter.setImage(composite)
             } else {
                 filter.release()

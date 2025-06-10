@@ -54,6 +54,8 @@ class OverlaysSettingsViewModel(
         private const val KEY_SCOREBOARD_NAME = "key_scoreboard_name"
         private const val KEY_SHOW_LOGOS      = "key_show_logos"
         private const val KEY_SCOREBOARD_ENABLED = "key_scoreboard_enabled"
+        private const val KEY_SCORE1 = "key_score1"
+        private const val KEY_SCORE2 = "key_score2"
     }
 
     val selectedTeam1 = savedStateHandle.getLiveData(KEY_TEAM1, "")
@@ -64,6 +66,8 @@ class OverlaysSettingsViewModel(
         savedStateHandle.getLiveData(KEY_SHOW_LOGOS, true)
     val scoreboardEnabled = savedStateHandle
         .getLiveData(KEY_SCOREBOARD_ENABLED, false)
+    val score1 = savedStateHandle.getLiveData(KEY_SCORE1, 0)
+    val score2 = savedStateHandle.getLiveData(KEY_SCORE2, 0)
 
     init {
         viewModelScope.launch {
@@ -181,5 +185,11 @@ class OverlaysSettingsViewModel(
     }
     fun setScoreboardEnabled(enabled: Boolean) {
         savedStateHandle[KEY_SCOREBOARD_ENABLED] = enabled
+    }
+    fun setScore1(value: Int) {
+        savedStateHandle[KEY_SCORE1] = value
+    }
+    fun setScore2(value: Int) {
+        savedStateHandle[KEY_SCORE2] = value
     }
 }

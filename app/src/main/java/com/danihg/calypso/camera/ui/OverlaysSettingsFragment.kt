@@ -21,6 +21,7 @@ class OverlaysSettingsFragment : Fragment(R.layout.fragment_overlays_settings) {
 
     private val cameraViewModel: CameraViewModel by activityViewModels()
     private val vm: OverlaysSettingsViewModel by activityViewModels()
+    private val genericStream get() = cameraViewModel.genericStream
 
     // Teams
     private lateinit var btnClose: MaterialButton
@@ -150,6 +151,11 @@ class OverlaysSettingsFragment : Fragment(R.layout.fragment_overlays_settings) {
         // ==== Save ====
         btnSave = view.findViewById(R.id.btnSaveOverlays)
         btnSave.setOnClickListener {
+            genericStream.getGlInterface().clearFilters()
+            vm.setScoreboardEnabled(false)
+            vm.setScore1(0)
+            vm.setScore2(0)
+            vm.setShowLogos(cbShowLogos.isChecked)
             parentFragmentManager.popBackStack()
         }
     }
