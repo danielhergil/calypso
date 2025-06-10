@@ -115,10 +115,10 @@
 
                                 <ImageView
                                     android:id="@+id/iv_team1_logo"
-                                    android:layout_width="100dp"
-                                    android:layout_height="100dp"
+                                    android:layout_width="48dp"
+                                    android:layout_height="48dp"
                                     android:layout_gravity="center_horizontal"
-                                    android:scaleType="centerCrop"
+                                    android:scaleType="fitCenter"
                                     android:src="@drawable/ic_image_placeholder" />
 
                                 <ProgressBar
@@ -162,10 +162,10 @@
 
                                 <ImageView
                                     android:id="@+id/iv_team2_logo"
-                                    android:layout_width="100dp"
-                                    android:layout_height="100dp"
+                                    android:layout_width="48dp"
+                                    android:layout_height="48dp"
                                     android:layout_gravity="center_horizontal"
-                                    android:scaleType="centerCrop"
+                                    android:scaleType="fitCenter"
                                     android:src="@drawable/ic_image_placeholder" />
 
                                 <ProgressBar

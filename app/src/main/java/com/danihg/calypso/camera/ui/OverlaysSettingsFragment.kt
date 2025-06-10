@@ -176,26 +176,36 @@ class OverlaysSettingsFragment : Fragment(R.layout.fragment_overlays_settings) {
             imageView.visibility = View.INVISIBLE
             progressBar.visibility = View.VISIBLE
             progressBar.bringToFront()
-            imageView.load(url) {
-                placeholder(null)
-                error(R.drawable.ic_image_placeholder)
-                listener(
-                    onStart = {
-                        progressBar.visibility = View.VISIBLE
-                        imageView.visibility = View.INVISIBLE
-                    },
-                    onSuccess = { _, _ ->
-                        progressBar.visibility = View.GONE
-                        imageView.visibility = View.VISIBLE
-                    },
-                    onError = { _, _ ->
-                        progressBar.visibility = View.GONE
-                        imageView.visibility = View.VISIBLE
-                    }
-                )
+
+            // Calculamos tamaño real del ImageView
+            imageView.post {
+                val targetWidth = imageView.width
+                val targetHeight = imageView.height
+
+                imageView.load(url) {
+                    size(targetWidth, targetHeight) // Fuerza reescalado a tamaño de destino
+                    scale(coil.size.Scale.FIT)
+                    placeholder(null)
+                    error(R.drawable.ic_image_placeholder)
+                    listener(
+                        onStart = {
+                            progressBar.visibility = View.VISIBLE
+                            imageView.visibility = View.INVISIBLE
+                        },
+                        onSuccess = { _, _ ->
+                            progressBar.visibility = View.GONE
+                            imageView.visibility = View.VISIBLE
+                        },
+                        onError = { _, _ ->
+                            progressBar.visibility = View.GONE
+                            imageView.visibility = View.VISIBLE
+                        }
+                    )
+                }
             }
         }
     }
+
 
     /** Carga logo de Scoreboard (full o no_logo) */
     private fun loadScoreLogo(scoreName: String) {

@@ -1,5 +1,6 @@
 package com.danihg.calypso.camera.ui
 
+import ScoreboardOverlayGenerator
 import android.content.res.ColorStateList
 import android.content.res.Configuration
 import android.graphics.Bitmap
@@ -10,6 +11,7 @@ import android.util.Log
 import android.view.View
 import android.widget.FrameLayout
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -17,7 +19,6 @@ import androidx.lifecycle.lifecycleScope
 import com.danihg.calypso.R
 import com.danihg.calypso.camera.models.CameraViewModel
 import com.danihg.calypso.camera.models.OverlaysSettingsViewModel
-import com.danihg.calypso.overlays.filter.ScoreboardOverlayGenerator
 import com.google.android.material.button.MaterialButton
 import com.pedro.encoder.input.gl.render.filters.`object`.ImageObjectFilterRender
 import kotlinx.coroutines.Dispatchers
@@ -38,6 +39,8 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
     private lateinit var btnDec1:              MaterialButton
     private lateinit var btnInc2:              MaterialButton
     private lateinit var btnDec2:              MaterialButton
+    private lateinit var spinnerScoreboard: ProgressBar
+
 
     private val scoreboardFilter by lazy { ImageObjectFilterRender() }
     private var logo1Bmp:    Bitmap? = null
@@ -55,6 +58,8 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
         btnDec1              = view.findViewById(R.id.btn_dec_team1)
         btnInc2              = view.findViewById(R.id.btn_inc_team2)
         btnDec2              = view.findViewById(R.id.btn_dec_team2)
+        spinnerScoreboard    = view.findViewById(R.id.spinnerScoreboard)
+
 
         val root = requireActivity().findViewById<FrameLayout>(R.id.overlays_container)
         val scoreContainer = view.findViewById<LinearLayout>(R.id.score_buttons_container)
@@ -119,7 +124,27 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
 
         // 3) Toggle al click
         btnScoreboardOverlay.setOnClickListener {
+            // Desactiva el botón y muestra el spinner
+            btnScoreboardOverlay.isEnabled = false
+            btnScoreboardOverlay.icon = null
+            btnScoreboardOverlay.visibility = View.GONE
+            spinnerScoreboard.visibility = View.VISIBLE
+
+            // Cambia el estado en el ViewModel
             vm.setScoreboardEnabled(!(vm.scoreboardEnabled.value ?: false))
+
+            // Espera 2 segundos antes de restaurar el botón
+            viewLifecycleOwner.lifecycleScope.launch {
+                kotlinx.coroutines.delay(2000) // 2000 ms = 2 segundos
+
+                // Restaurar estado del botón
+                btnScoreboardOverlay.isEnabled = true
+                btnScoreboardOverlay.icon = ContextCompat.getDrawable(
+                    requireContext(), R.drawable.ic_scoreboard_overlay
+                )
+                spinnerScoreboard.visibility = View.GONE
+                btnScoreboardOverlay.visibility = View.VISIBLE
+            }
         }
 
         // 4) Abrir settings
@@ -179,7 +204,8 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
                 ?.alias.orEmpty(),
             score1   = vm.score1.value ?: 0,
             score2   = vm.score2.value ?: 0,
-            filter   = scoreboardFilter
+            filter   = scoreboardFilter,
+            showLogos = vm.showLogos.value ?: true
         )
         applyScaleAndPosition(snapshotBmp!!)
         if (!isScoreboardAttached) {
@@ -211,7 +237,8 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
                 alias2   = "",
                 score1   = vm.score1.value ?: 0,
                 score2   = vm.score2.value ?: 0,
-                filter   = scoreboardFilter
+                filter   = scoreboardFilter,
+                showLogos = vm.showLogos.value ?: true
             )
             applyScaleAndPosition(bmpSnapshot)
             genericStream.getGlInterface().addFilter(scoreboardFilter)
@@ -244,7 +271,8 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
                 alias2   = team2?.alias.orEmpty(),
                 score1   = vm.score1.value ?: 0,
                 score2   = vm.score2.value ?: 0,
-                filter   = scoreboardFilter
+                filter   = scoreboardFilter,
+                showLogos = vm.showLogos.value ?: true
             )
         }
     }
