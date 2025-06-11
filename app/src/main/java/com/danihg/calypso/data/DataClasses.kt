@@ -1,5 +1,6 @@
 package com.danihg.calypso.data
 
+import com.google.firebase.Timestamp
 import com.pedro.common.VideoCodec
 
 data class StreamConnection(
@@ -28,15 +29,14 @@ enum class VideoSourceType { DEVICE_CAMERA, USB_CAMERA }
 enum class AudioSourceType { DEVICE_AUDIO, MICROPHONE }
 
 data class Player(
-    val name: String = "",
-    val number: Int = 0,
-    val goals: Int = 0
+    val playerName: String = "",
+    val number: Int = 0
 )
 
 data class Team(
-    val alias: String = "",
-    val createdAt: com.google.firebase.Timestamp? = null,
-    val logoUrl: String? = null,
     val name: String = "",
+    val alias: String = "",
+    val logo: String = "", // URL de la imagen
+    val createdAt: Timestamp? = null,
     val players: List<Player> = emptyList()
 )

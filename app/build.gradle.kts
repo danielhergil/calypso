@@ -47,6 +47,7 @@ dependencies {
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
     implementation(libs.firebase.crashlytics)
+    implementation("com.google.firebase:firebase-storage-ktx:21.0.2")
 
     // Image Load
     implementation("io.coil-kt:coil:2.4.0")

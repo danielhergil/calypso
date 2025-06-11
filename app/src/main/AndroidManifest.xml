@@ -37,6 +37,8 @@
         <activity android:name=".camera.CameraActivity"
             android:exported="false"
             android:theme="@style/Theme.Calypso.Fullscreen" />
+        <activity android:name=".teams.AddTeamsActivity"
+            android:exported="false" />
         <service
             android:name=".services.CameraService"
             android:foregroundServiceType="camera|microphone"

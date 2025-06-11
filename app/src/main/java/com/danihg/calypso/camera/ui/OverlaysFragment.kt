@@ -150,6 +150,10 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
         // 4) Abrir settings
         btnOverlaysMenu.setOnClickListener {
             snapshotBmp = null
+            if (vm.scoreboardEnabled.value == true && isScoreboardAttached) {
+                genericStream.getGlInterface().removeFilter(scoreboardFilter)
+                isScoreboardAttached = false
+            }
             parentFragmentManager.beginTransaction()
                 .replace(R.id.overlays_container, OverlaysSettingsFragment())
                 .addToBackStack(null)
