@@ -5,6 +5,7 @@
     android:layout_marginBottom="12dp"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:tag="new_team_form"
     app:cardElevation="4dp"
     app:cardCornerRadius="8dp">
 

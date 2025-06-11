@@ -25,9 +25,12 @@ import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
+import java.io.Serializable
 
 // --- Modelos ---
 data class Player(val playerName: String = "", val number: Int = 0)
+data class DraftPlayer(val name: String, val number: Int) : Serializable
+
 data class Team(
     val name: String = "",
     val alias: String = "",
@@ -35,6 +38,12 @@ data class Team(
     val createdAt: Timestamp? = null,
     val players: List<Player> = emptyList()
 )
+data class DraftTeam(
+    val name: String,
+    val alias: String,
+    val logoUri: Uri?,
+    val players: List<DraftPlayer>
+) : Serializable
 
 class AddTeamsActivity : AppCompatActivity() {
     private lateinit var binding: ActivityAddTeamsBinding
@@ -83,6 +92,52 @@ class AddTeamsActivity : AppCompatActivity() {
         binding.btnClose.setOnClickListener { finish() }
         binding.fabAddTeam.setOnClickListener { showNewTeamForm() }
         refreshTeams()
+
+        savedInstanceState?.getSerializable("draft_team")?.let { data ->
+            val draft = data as DraftTeam
+
+            // 🔥 Eliminar cualquier formulario anterior
+            (0 until binding.teamsContainer.childCount).mapNotNull { i ->
+                binding.teamsContainer.getChildAt(i) as? MaterialCardView
+            }.filter { it.tag == "new_team_form" }
+                .forEach { binding.teamsContainer.removeView(it) }
+
+            // 🧠 Inflar formulario limpio
+            showNewTeamForm(
+                draftName = draft.name,
+                draftAlias = draft.alias,
+                draftLogoUri = draft.logoUri,
+                draftPlayers = draft.players
+            )
+        }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+
+        val container = (0 until binding.teamsContainer.childCount)
+            .mapNotNull { binding.teamsContainer.getChildAt(it) as? MaterialCardView }
+            .firstOrNull { it.tag == "new_team_form" } ?: return
+        val etName = container.findViewById<TextInputEditText>(R.id.etNewTeamName)
+        val etAlias = container.findViewById<TextInputEditText>(R.id.etNewTeamAlias)
+        val playersCont = container.findViewById<LinearLayout>(R.id.newPlayersContainer)
+
+        val players = mutableListOf<DraftPlayer>()
+        for (i in 0 until playersCont.childCount) {
+            val row = playersCont.getChildAt(i)
+            val name = row.findViewById<TextInputEditText>(R.id.etPlayerName).text.toString()
+            val number = row.findViewById<TextInputEditText>(R.id.etPlayerNumber).text.toString().toIntOrNull() ?: 0
+            players.add(DraftPlayer(name, number))
+        }
+
+        val draftTeam = DraftTeam(
+            name = etName.text.toString(),
+            alias = etAlias.text.toString(),
+            logoUri = newPendingUri,
+            players = players
+        )
+
+        outState.putSerializable("draft_team", draftTeam)
     }
 
     private fun refreshTeams() {
@@ -247,19 +302,38 @@ class AddTeamsActivity : AppCompatActivity() {
     private var currentNewProgress: ProgressBar? = null
     private var currentNewNameEt: TextInputEditText? = null
 
-    private fun showNewTeamForm() {
+    private fun showNewTeamForm(
+        draftName: String = "",
+        draftAlias: String = "",
+        draftLogoUri: Uri? = null,
+        draftPlayers: List<DraftPlayer>? = null
+    ) {
         // Inflar form
         val card = LayoutInflater.from(this)
             .inflate(R.layout.item_new_team_form, binding.teamsContainer, false)
                 as MaterialCardView
 
+        card.tag = "new_team_form"
+
+        val etName = card.findViewById<TextInputEditText>(R.id.etNewTeamName)
+        val etAlias = card.findViewById<TextInputEditText>(R.id.etNewTeamAlias)
+        val ivLogo = card.findViewById<ImageView>(R.id.ivNewLogoLarge)
+        val playersCont = card.findViewById<LinearLayout>(R.id.newPlayersContainer)
+
+        // Setear valores
+        etName.setText(draftName)
+        etAlias.setText(draftAlias)
+        if (draftLogoUri != null) {
+            newPendingUri = draftLogoUri
+            ivLogo.load(draftLogoUri) { placeholder(R.drawable.ic_image_placeholder) }
+        }
+        draftPlayers?.forEach {
+            addPlayerRow(playersCont, it.name, it.number)
+        }
+
         // Refs
-        val etName       = card.findViewById<TextInputEditText>(R.id.etNewTeamName)
-        val etAlias      = card.findViewById<TextInputEditText>(R.id.etNewTeamAlias)
-        val ivLogo       = card.findViewById<ImageView>(R.id.ivNewLogoLarge)
         val pBarLogo     = card.findViewById<ProgressBar>(R.id.progressNewLogo)
         val btnPickLogo  = card.findViewById<MaterialButton>(R.id.btnPickNewLogo)
-        val playersCont  = card.findViewById<LinearLayout>(R.id.newPlayersContainer)
         val btnAddPl     = card.findViewById<Button>(R.id.btnAddNewPlayer)
         val btnSaveNew   = card.findViewById<Button>(R.id.btnSaveNewTeam)
 
@@ -282,6 +356,7 @@ class AddTeamsActivity : AppCompatActivity() {
         btnAddPl.setOnClickListener {
             addPlayerRow(playersCont, "", 0)
         }
+        
 
         // Guardar nuevo equipo
         btnSaveNew.setOnClickListener {
@@ -358,15 +433,14 @@ class AddTeamsActivity : AppCompatActivity() {
 
     // Reutiliza para ambos casos (editar y nuevo)
     private fun addPlayerRow(container: LinearLayout, name: String, number: Int) {
-        val row = LayoutInflater.from(this)
-            .inflate(R.layout.item_player_row, container, false)
-        val etName   = row.findViewById<TextInputEditText>(R.id.etPlayerName)
+        val row = LayoutInflater.from(this).inflate(R.layout.item_player_row, container, false)
+        val etName = row.findViewById<TextInputEditText>(R.id.etPlayerName)
         val etNumber = row.findViewById<TextInputEditText>(R.id.etPlayerNumber)
-        val btnRm    = row.findViewById<ImageButton>(R.id.btnRemovePlayer)
-
         etName.setText(name)
         etNumber.setText(number.toString())
-        btnRm.setOnClickListener { container.removeView(row) }
+        row.findViewById<ImageButton>(R.id.btnRemovePlayer).setOnClickListener {
+            container.removeView(row)
+        }
         container.addView(row)
     }
 }
