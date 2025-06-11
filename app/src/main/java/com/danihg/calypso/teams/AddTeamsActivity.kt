@@ -91,7 +91,12 @@ class AddTeamsActivity : AppCompatActivity() {
 
         binding.btnClose.setOnClickListener { finish() }
         binding.fabAddTeam.setOnClickListener { showNewTeamForm() }
-        refreshTeams()
+
+        val editingTeamId = savedInstanceState?.getString("editing_team_id")
+        val editingTeamData = savedInstanceState?.getSerializable("editing_team_data") as? DraftTeam
+
+//        refreshTeams()
+        loadTeams(editingTeamId, editingTeamData)
 
         savedInstanceState?.getSerializable("draft_team")?.let { data ->
             val draft = data as DraftTeam
@@ -115,37 +120,77 @@ class AddTeamsActivity : AppCompatActivity() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
 
-        val container = (0 until binding.teamsContainer.childCount)
+        // 1) Guardar estado del formulario "Nuevo equipo" si está abierto
+        val newFormCard = (0 until binding.teamsContainer.childCount)
             .mapNotNull { binding.teamsContainer.getChildAt(it) as? MaterialCardView }
-            .firstOrNull { it.tag == "new_team_form" } ?: return
-        val etName = container.findViewById<TextInputEditText>(R.id.etNewTeamName)
-        val etAlias = container.findViewById<TextInputEditText>(R.id.etNewTeamAlias)
-        val playersCont = container.findViewById<LinearLayout>(R.id.newPlayersContainer)
+            .firstOrNull { it.tag == "new_team_form" }
+        newFormCard?.let { card ->
+            val etName      = card.findViewById<TextInputEditText>(R.id.etNewTeamName)
+            val etAlias     = card.findViewById<TextInputEditText>(R.id.etNewTeamAlias)
+            val playersCont = card.findViewById<LinearLayout>(R.id.newPlayersContainer)
 
-        val players = mutableListOf<DraftPlayer>()
-        for (i in 0 until playersCont.childCount) {
-            val row = playersCont.getChildAt(i)
-            val name = row.findViewById<TextInputEditText>(R.id.etPlayerName).text.toString()
-            val number = row.findViewById<TextInputEditText>(R.id.etPlayerNumber).text.toString().toIntOrNull() ?: 0
-            players.add(DraftPlayer(name, number))
+            val draftPlayers = mutableListOf<DraftPlayer>()
+            for (i in 0 until playersCont.childCount) {
+                val row    = playersCont.getChildAt(i)
+                val name   = row.findViewById<TextInputEditText>(R.id.etPlayerName).text.toString()
+                val number = row.findViewById<TextInputEditText>(R.id.etPlayerNumber)
+                    .text.toString().toIntOrNull() ?: 0
+                draftPlayers.add(DraftPlayer(name, number))
+            }
+
+            val draftTeam = DraftTeam(
+                name     = etName.text.toString(),
+                alias    = etAlias.text.toString(),
+                logoUri  = newPendingUri,
+                players  = draftPlayers
+            )
+            outState.putSerializable("draft_team", draftTeam)
         }
 
-        val draftTeam = DraftTeam(
-            name = etName.text.toString(),
-            alias = etAlias.text.toString(),
-            logoUri = newPendingUri,
-            players = players
-        )
+        // 2) Guardar estado del "team" en edición si hay alguno expandido
+        val editingCard = (0 until binding.teamsContainer.childCount)
+            .mapNotNull { binding.teamsContainer.getChildAt(it) as? MaterialCardView }
+            .firstOrNull {
+                it.findViewById<LinearLayout>(R.id.bodyLayout)?.visibility == View.VISIBLE
+            }
+        editingCard?.let { card ->
+            // Recuperamos el teamId que habíamos guardado como tag
+            val teamId = card.getTag(R.id.tag_team_id) as? String ?: return@let
 
-        outState.putSerializable("draft_team", draftTeam)
+            val etName      = card.findViewById<TextInputEditText>(R.id.etTeamName)
+            val etAlias     = card.findViewById<TextInputEditText>(R.id.etTeamAlias)
+            val playersCont = card.findViewById<LinearLayout>(R.id.playersContainer)
+
+            val draftPlayers = mutableListOf<DraftPlayer>()
+            for (i in 0 until playersCont.childCount) {
+                val row    = playersCont.getChildAt(i)
+                val name   = row.findViewById<TextInputEditText>(R.id.etPlayerName).text.toString()
+                val number = row.findViewById<TextInputEditText>(R.id.etPlayerNumber)
+                    .text.toString().toIntOrNull() ?: 0
+                draftPlayers.add(DraftPlayer(name, number))
+            }
+
+            val editingDraft = DraftTeam(
+                name     = etName.text.toString(),
+                alias    = etAlias.text.toString(),
+                logoUri  = selectedPendingUri,
+                players  = draftPlayers
+            )
+            outState.putString("editing_team_id", teamId)
+            outState.putSerializable("editing_team_data", editingDraft)
+        }
     }
+
 
     private fun refreshTeams() {
         binding.teamsContainer.removeAllViews()
         loadTeams()
     }
 
-    private fun loadTeams() {
+    private fun loadTeams(
+        restoreTeamId: String? = null,
+        restoreTeamData: DraftTeam? = null
+    ) {
         if (userId.isEmpty()) return
         db.collection("users").document(userId)
             .collection("teams")
@@ -153,6 +198,33 @@ class AddTeamsActivity : AppCompatActivity() {
             .addOnSuccessListener { snaps ->
                 snaps.forEach { doc ->
                     createTeamCard(doc.toObject(Team::class.java), doc.id)
+                }
+
+                // ✅ Restaurar edición si corresponde
+                if (restoreTeamId != null && restoreTeamData != null) {
+                    val card = (0 until binding.teamsContainer.childCount)
+                        .mapNotNull { binding.teamsContainer.getChildAt(it) as? MaterialCardView }
+                        .firstOrNull { it.getTag(R.id.tag_team_id) == restoreTeamId }
+
+                    card?.let {
+                        val body = it.findViewById<LinearLayout>(R.id.bodyLayout)
+                        val etName = it.findViewById<TextInputEditText>(R.id.etTeamName)
+                        val etAlias = it.findViewById<TextInputEditText>(R.id.etTeamAlias)
+                        val playersCont = it.findViewById<LinearLayout>(R.id.playersContainer)
+                        val ivLarge = it.findViewById<ImageView>(R.id.ivTeamLogoLarge)
+
+                        body.visibility = View.VISIBLE
+                        etName.setText(restoreTeamData.name)
+                        etAlias.setText(restoreTeamData.alias)
+                        playersCont.removeAllViews()
+                        restoreTeamData.players.forEach { p ->
+                            addPlayerRow(playersCont, p.name, p.number)
+                        }
+                        restoreTeamData.logoUri?.let { uri ->
+                            ivLarge.load(uri) { placeholder(R.drawable.ic_image_placeholder) }
+                            selectedPendingUri = uri
+                        }
+                    }
                 }
             }.addOnFailureListener {
                 Toast.makeText(this, "Error cargando equipos", Toast.LENGTH_SHORT).show()
@@ -163,6 +235,8 @@ class AddTeamsActivity : AppCompatActivity() {
         val card = LayoutInflater.from(this)
             .inflate(R.layout.item_team_card, binding.teamsContainer, false)
                 as MaterialCardView
+
+        card.setTag(R.id.tag_team_id, teamId)
 
         // Referencias…
         val header           = card.findViewById<LinearLayout>(R.id.headerLayout)
@@ -356,7 +430,7 @@ class AddTeamsActivity : AppCompatActivity() {
         btnAddPl.setOnClickListener {
             addPlayerRow(playersCont, "", 0)
         }
-        
+
 
         // Guardar nuevo equipo
         btnSaveNew.setOnClickListener {
