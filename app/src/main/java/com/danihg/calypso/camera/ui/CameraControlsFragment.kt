@@ -154,7 +154,7 @@ class CameraControlsFragment : Fragment(R.layout.fragment_camera_controls) {
                     } else {
                         // Portrait: alto fijo
                         val h = maxPx
-                        val w = 141
+                        val w = 160
                         Log.d("CameraControlsFragment", "portrait")
                         w to h
                     }
