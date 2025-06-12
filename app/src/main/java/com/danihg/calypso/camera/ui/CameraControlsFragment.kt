@@ -37,8 +37,14 @@ import com.danihg.calypso.utils.storage.StorageUtils
 import com.danihg.calypso.utils.ui.showTemporarySpinnerOn
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
 
 class CameraControlsFragment : Fragment(R.layout.fragment_camera_controls) {
+
+    private val auth: FirebaseAuth by lazy { FirebaseAuth.getInstance() }
+    private val firestore: FirebaseFirestore by lazy { FirebaseFirestore.getInstance() }
 
     private val cameraViewModel: CameraViewModel by activityViewModels()
     private val genericStream get() = cameraViewModel.genericStream
@@ -221,7 +227,7 @@ class CameraControlsFragment : Fragment(R.layout.fragment_camera_controls) {
 
         if (!stream.isRecording) {
             // === INICIAR grabación ===
-
+            cameraViewModel.recordStartTime = System.currentTimeMillis()
             // a) (Opcional) Antes del spinner, podemos atenuar el icono para indicar “loading”:
             btnRecord.setIconResource(R.drawable.ic_record_mode)
             btnRecord.iconTint = null
@@ -244,7 +250,7 @@ class CameraControlsFragment : Fragment(R.layout.fragment_camera_controls) {
             }
         } else {
             // === DETENER grabación ===
-
+            val durationSec = (System.currentTimeMillis() - cameraViewModel.recordStartTime) / 1000
             // a) Atenuamos icono mientras dura spinner:
             btnRecord.setIconResource(R.drawable.ic_stop)
             btnRecord.iconTint = ColorStateList.valueOf(
@@ -260,6 +266,7 @@ class CameraControlsFragment : Fragment(R.layout.fragment_camera_controls) {
             showTemporarySpinnerOn(btnRecord, 2000L) {
                 btnRecord.alpha = 1f
                 syncButtonStates()  // Ahora isRecording=false, así que se pondrá ic_record_mode
+                uploadMetric("record", durationSec)
             }
         }
     }
@@ -271,7 +278,7 @@ class CameraControlsFragment : Fragment(R.layout.fragment_camera_controls) {
 
         if (!stream.isStreaming) {
             // === INICIAR streaming ===
-
+            cameraViewModel.streamStartTime = System.currentTimeMillis()
             // a) Atenuamos icono mientras dura spinner:
             btnStream.setIconResource(R.drawable.ic_stream_mode)
             btnStream.iconTint = null
@@ -292,7 +299,7 @@ class CameraControlsFragment : Fragment(R.layout.fragment_camera_controls) {
             }
         } else {
             // === DETENER streaming ===
-
+            val durationSec = (System.currentTimeMillis() - cameraViewModel.streamStartTime) / 1000
             // a) Atenuamos icono
             btnStream.setIconResource(R.drawable.ic_stop)
             btnStream.iconTint = ColorStateList.valueOf(
@@ -308,6 +315,7 @@ class CameraControlsFragment : Fragment(R.layout.fragment_camera_controls) {
             showTemporarySpinnerOn(btnStream, 2000L) {
                 btnStream.alpha = 1f
                 syncButtonStates()  // isStreaming=false → ic_stream_mode
+                uploadMetric("stream", durationSec)
             }
         }
     }
@@ -410,5 +418,28 @@ class CameraControlsFragment : Fragment(R.layout.fragment_camera_controls) {
                 Toast.LENGTH_SHORT
             ).show()
         }
+    }
+
+    private fun uploadMetric(action: String, durationSec: Long) {
+        val user = auth.currentUser ?: return
+        val metricRef = firestore
+            .collection("users")
+            .document(user.uid)
+            .collection("metrics")
+            .document()
+
+        val data = mapOf(
+            "action"    to action,
+            "use"       to durationSec,
+            "createdAt" to FieldValue.serverTimestamp()
+        )
+
+        metricRef.set(data)
+            .addOnSuccessListener {
+                Log.d("CameraControls", "Métrica subida: $action = ${durationSec}s")
+            }
+            .addOnFailureListener { e ->
+                Log.e("CameraControls", "Error subiendo métrica", e)
+            }
     }
 }

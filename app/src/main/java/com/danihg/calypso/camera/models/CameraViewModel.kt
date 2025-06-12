@@ -19,6 +19,11 @@ class CameraViewModel(
     private val realApp = getApplication<CalypsoApp>()
     val genericStream = realApp.genericStream
 
+    /** Timestamp en milis al iniciar streaming */
+    var streamStartTime: Long = 0L
+    /** Timestamp en milis al iniciar grabación */
+    var recordStartTime: Long = 0L
+
     // Resto de tu ViewModel (LiveData, requestLoadProfile, setStreamUrl, etc.)
     private val _loadProfileEvent = MutableLiveData<Event<StreamProfile>>()
     val loadProfileEvent: LiveData<Event<StreamProfile>> = _loadProfileEvent
