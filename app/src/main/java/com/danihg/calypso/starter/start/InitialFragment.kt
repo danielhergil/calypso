@@ -56,11 +56,11 @@ class InitialFragment : Fragment() {
             // Aquí ya tenemos todos los permisos → inicializamos el audio
             (requireActivity().application as CalypsoApp).initializeAudioIfNeeded()
         } else {
-            Toast.makeText(
-                requireContext(),
-                "Camera, audio y permisos de servicio en primer plano son necesarios para continuar",
-                Toast.LENGTH_LONG
-            ).show()
+//            Toast.makeText(
+//                requireContext(),
+//                "Camera, audio y permisos de servicio en primer plano son necesarios para continuar",
+//                Toast.LENGTH_LONG
+//            ).show()
         }
     }
 
