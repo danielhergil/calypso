@@ -4,12 +4,23 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
+import android.content.res.Configuration
+import android.graphics.Bitmap
+import android.graphics.Color
+import android.graphics.Matrix
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
+import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
+import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -25,8 +36,15 @@ import com.danihg.calypso.services.CameraService
 import com.danihg.calypso.utils.storage.StorageUtils
 import com.danihg.calypso.utils.ui.showTemporarySpinnerOn
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.card.MaterialCardView
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
 
 class CameraControlsFragment : Fragment(R.layout.fragment_camera_controls) {
+
+    private val auth: FirebaseAuth by lazy { FirebaseAuth.getInstance() }
+    private val firestore: FirebaseFirestore by lazy { FirebaseFirestore.getInstance() }
 
     private val cameraViewModel: CameraViewModel by activityViewModels()
     private val genericStream get() = cameraViewModel.genericStream
@@ -54,6 +72,7 @@ class CameraControlsFragment : Fragment(R.layout.fragment_camera_controls) {
 
     private var currentStreamUrl: String = ""
 
+    @RequiresApi(Build.VERSION_CODES.R)
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
@@ -95,12 +114,103 @@ class CameraControlsFragment : Fragment(R.layout.fragment_camera_controls) {
             }
         }
         btnPicture.setOnClickListener {
-            Log.d("CameraControlsFragment", "btnPicture clicked")
-            // TODO: implement still‐capture via genericStream o GL snapshot
+            val root = requireActivity().findViewById<ViewGroup>(android.R.id.content)
+
+            // 1) FLASH BLANCO
+            val flashView = View(requireContext()).apply { setBackgroundColor(Color.WHITE) }
+            root.addView(flashView,
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+            flashView.alpha = 0f
+            flashView.animate()
+                .alpha(1f)
+                .setDuration(100)
+                .withEndAction {
+                    flashView.animate()
+                        .alpha(0f)
+                        .setDuration(100)
+                        .withEndAction { root.removeView(flashView) }
+                }
+
+            // 2) Tomar foto
+            genericStream.getGlInterface().takePhoto { bitmap ->
+                requireActivity().runOnUiThread {
+                    val density = resources.displayMetrics.density
+                    val isLandscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+                    val marginStartPx = if (isLandscape) {
+                        (64 * density).toInt()
+                    } else {
+                        (24 * density).toInt()
+                    }
+                    val marginBottomPx = if (isLandscape) {
+                        (24 * density).toInt()
+                    } else {
+                        (84 * density).toInt()
+                    }
+                    val maxPx = (96 * density).toInt()
+
+                    // 3) Usar dimensiones reales del bitmap para mantener proporción
+                    val (thumbW, thumbH) = if (isLandscape) {
+                        // Landscape: ancho fijo
+                        val w = maxPx
+                        val h = (bitmap.height * w / bitmap.width.toFloat()).toInt()
+                        Log.d("CameraControlsFragment", "landscape")
+                        w to h
+                    } else {
+                        // Portrait: alto fijo
+                        val h = maxPx
+                        val w = 160
+                        Log.d("CameraControlsFragment", "portrait")
+                        w to h
+                    }
+                    Log.d("CameraControlsFragment", "onViewCreated(): bitmap.width=${bitmap.width}, bitmap.height=${bitmap.height}")
+                    Log.d("CameraControlsFragment", "onViewCreated(): thumbW=$thumbW, thumbH=$thumbH")
+                    // 4) CardView con borde blanco y esquinas redondeadas
+                    val card = MaterialCardView(requireContext()).apply {
+                        layoutParams = FrameLayout.LayoutParams(thumbW, thumbH).apply {
+                            gravity = Gravity.BOTTOM or Gravity.START
+                            setMargins(marginStartPx, 0, 0, marginBottomPx)
+                        }
+                        strokeWidth = (2 * density).toInt()
+                        strokeColor = Color.WHITE
+                        radius = 8 * density
+                        preventCornerOverlap = true
+                        useCompatPadding = true
+                        elevation = 4 * density
+                    }
+
+                    val thumb = ImageView(requireContext()).apply {
+                        layoutParams = FrameLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.MATCH_PARENT
+                        )
+                        scaleType = ImageView.ScaleType.CENTER_CROP
+                        setImageBitmap(bitmap)
+                    }
+
+                    card.addView(thumb)
+                    root.addView(card)
+
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        root.removeView(card)
+                    }, 3000L)
+                }
+            }
         }
 
         // 4) Sincronizamos iconos con el estado real justo al crear la vista
         syncButtonStates()
+    }
+
+    private fun rotateBitmapIfNeeded(original: Bitmap): Bitmap {
+        return if (original.width > original.height) {
+            // Rotamos 90° para que sea visualmente portrait
+            val matrix = Matrix().apply { postRotate(90f) }
+            Bitmap.createBitmap(original, 0, 0, original.width, original.height, matrix, true)
+        } else {
+            original
+        }
     }
 
     override fun onResume() {
@@ -117,7 +227,7 @@ class CameraControlsFragment : Fragment(R.layout.fragment_camera_controls) {
 
         if (!stream.isRecording) {
             // === INICIAR grabación ===
-
+            cameraViewModel.recordStartTime = System.currentTimeMillis()
             // a) (Opcional) Antes del spinner, podemos atenuar el icono para indicar “loading”:
             btnRecord.setIconResource(R.drawable.ic_record_mode)
             btnRecord.iconTint = null
@@ -140,7 +250,7 @@ class CameraControlsFragment : Fragment(R.layout.fragment_camera_controls) {
             }
         } else {
             // === DETENER grabación ===
-
+            val durationSec = (System.currentTimeMillis() - cameraViewModel.recordStartTime) / 1000
             // a) Atenuamos icono mientras dura spinner:
             btnRecord.setIconResource(R.drawable.ic_stop)
             btnRecord.iconTint = ColorStateList.valueOf(
@@ -156,6 +266,7 @@ class CameraControlsFragment : Fragment(R.layout.fragment_camera_controls) {
             showTemporarySpinnerOn(btnRecord, 2000L) {
                 btnRecord.alpha = 1f
                 syncButtonStates()  // Ahora isRecording=false, así que se pondrá ic_record_mode
+                uploadMetric("record", durationSec)
             }
         }
     }
@@ -167,7 +278,7 @@ class CameraControlsFragment : Fragment(R.layout.fragment_camera_controls) {
 
         if (!stream.isStreaming) {
             // === INICIAR streaming ===
-
+            cameraViewModel.streamStartTime = System.currentTimeMillis()
             // a) Atenuamos icono mientras dura spinner:
             btnStream.setIconResource(R.drawable.ic_stream_mode)
             btnStream.iconTint = null
@@ -188,7 +299,7 @@ class CameraControlsFragment : Fragment(R.layout.fragment_camera_controls) {
             }
         } else {
             // === DETENER streaming ===
-
+            val durationSec = (System.currentTimeMillis() - cameraViewModel.streamStartTime) / 1000
             // a) Atenuamos icono
             btnStream.setIconResource(R.drawable.ic_stop)
             btnStream.iconTint = ColorStateList.valueOf(
@@ -204,6 +315,7 @@ class CameraControlsFragment : Fragment(R.layout.fragment_camera_controls) {
             showTemporarySpinnerOn(btnStream, 2000L) {
                 btnStream.alpha = 1f
                 syncButtonStates()  // isStreaming=false → ic_stream_mode
+                uploadMetric("stream", durationSec)
             }
         }
     }
@@ -306,5 +418,28 @@ class CameraControlsFragment : Fragment(R.layout.fragment_camera_controls) {
                 Toast.LENGTH_SHORT
             ).show()
         }
+    }
+
+    private fun uploadMetric(action: String, durationSec: Long) {
+        val user = auth.currentUser ?: return
+        val metricRef = firestore
+            .collection("users")
+            .document(user.uid)
+            .collection("metrics")
+            .document()
+
+        val data = mapOf(
+            "action"    to action,
+            "use"       to durationSec,
+            "createdAt" to FieldValue.serverTimestamp()
+        )
+
+        metricRef.set(data)
+            .addOnSuccessListener {
+                Log.d("CameraControls", "Métrica subida: $action = ${durationSec}s")
+            }
+            .addOnFailureListener { e ->
+                Log.e("CameraControls", "Error subiendo métrica", e)
+            }
     }
 }

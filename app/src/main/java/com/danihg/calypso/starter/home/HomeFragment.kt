@@ -6,10 +6,9 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
-import androidx.navigation.fragment.findNavController
-import com.danihg.calypso.R
 import com.danihg.calypso.camera.CameraActivity
 import com.danihg.calypso.databinding.FragmentHomeBinding
+import com.danihg.calypso.teams.AddTeamsActivity
 
 class HomeFragment : Fragment() {
     private var _binding: FragmentHomeBinding? = null
@@ -31,7 +30,8 @@ class HomeFragment : Fragment() {
             startActivity(intent)
         }
         binding.cardTeams.setOnClickListener {
-            findNavController().navigate(R.id.action_home_to_teams)
+            val intent = Intent(requireContext(), AddTeamsActivity::class.java)
+            startActivity(intent)
         }
     }
 

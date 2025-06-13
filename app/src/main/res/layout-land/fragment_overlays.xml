@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- Controles de score en landscape: arriba a la izquierda -->
+    <LinearLayout
+        android:id="@+id/score_buttons_container"
+        android:orientation="horizontal"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|start"
+        android:layout_marginStart="100dp"
+        android:layout_marginTop="40dp"
+        android:gravity="center_vertical">
+
+        <!-- Team 1: Decrementar -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_dec_team1"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="30dp"
+            android:layout_height="35dp"
+            app:icon="@drawable/ic_decrease"
+            app:iconSize="18dp"
+            app:iconGravity="textTop"
+            app:backgroundTint="#CCFFFFFF"
+            android:layout_marginEnd="8dp"/>
+
+        <!-- Team 1: Incrementar -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_inc_team1"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="30dp"
+            android:layout_height="35dp"
+            app:icon="@drawable/ic_add"
+            app:iconSize="18dp"
+            app:iconGravity="textTop"
+            app:backgroundTint="#CCFFFFFF"
+            android:layout_marginEnd="24dp"/>
+
+        <!-- Team 2: Decrementar -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_dec_team2"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="30dp"
+            android:layout_height="35dp"
+            app:icon="@drawable/ic_decrease"
+            app:iconSize="18dp"
+            app:iconGravity="textTop"
+            app:backgroundTint="#CCFFFFFF"
+            android:layout_marginEnd="8dp"/>
+
+        <!-- Team 2: Incrementar -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_inc_team2"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="30dp"
+            android:layout_height="35dp"
+            app:icon="@drawable/ic_add"
+            app:iconSize="18dp"
+            app:iconGravity="textTop"
+            app:backgroundTint="#CCFFFFFF"/>
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/overlays_menu"
+        android:orientation="horizontal"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|end"
+        android:layout_marginEnd="96dp"
+        android:layout_marginTop="40dp">
+
+        <!-- Toggle “Scoreboard Overlay” (invisible por defecto) -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnScoreboardOverlay"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:visibility="gone"
+            android:layout_marginEnd="8dp"
+            android:alpha="0.8"
+            app:icon="@drawable/ic_scoreboard_overlay"
+            app:iconSize="24dp"
+            app:cornerRadius="28dp"
+            app:backgroundTint="#CCFFFFFF"/>
+
+        <ProgressBar
+            android:id="@+id/spinnerScoreboard"
+            style="?android:attr/progressBarStyleLarge"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginEnd="12dp"
+            android:layout_gravity="center"
+            android:indeterminateTint="@color/calypso_red"
+            android:visibility="gone"
+            android:indeterminate="true"/>
+
+        <!-- Botón principal de “Overlays” -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnOverlaysMenu"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:alpha="0.8"
+            app:icon="@drawable/ic_overlays_menu"
+            app:iconSize="24dp"
+            app:backgroundTint="#CCFFFFFF"
+            app:cornerRadius="28dp"/>
+    </LinearLayout>
+
+</FrameLayout>
