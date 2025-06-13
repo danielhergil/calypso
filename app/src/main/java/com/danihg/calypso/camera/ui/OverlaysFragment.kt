@@ -64,15 +64,42 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
         val root = requireActivity().findViewById<FrameLayout>(R.id.overlays_container)
         val scoreContainer = view.findViewById<LinearLayout>(R.id.score_buttons_container)
 
+//        root.post {
+//            val parentH = root.height
+//            val percentFromBottom = 0.15f
+//            val bottomMarginPx = (parentH * percentFromBottom).toInt()
+//
+//            val lp = scoreContainer.layoutParams as FrameLayout.LayoutParams
+//            lp.setMargins(lp.leftMargin, lp.topMargin, lp.rightMargin, bottomMarginPx)
+//
+//            scoreContainer.layoutParams = lp
+//        }
         root.post {
-            val parentH = root.height
-            val percentFromBottom = 0.15f
-            val bottomMarginPx = (parentH * percentFromBottom).toInt()
+            val parentH = root.height.toFloat()
+            val parentW = root.width.toFloat()
+            val isLandscape = resources.configuration.orientation ==
+                    Configuration.ORIENTATION_LANDSCAPE
 
+            // 1) margen inferior al 15%
+            val bottomMarginPx = (parentH * 0.15f).toInt()
+
+            // 2) calculamos cuánto “de más” tenemos respecto a 2069px
+            val extra = parentW - 2219f
+
+            // 3) si estamos en landscape y la pantalla es más ancha, desplazamos
+            //    el contenedor la mitad del extra hacia la izquierda
+            scoreContainer.translationX = if (isLandscape && extra > 0f) {
+                -extra / 2f
+            } else {
+                0f
+            }
+
+            // 4) aplicamos sólo el margen inferior (dejamos el leftMargin original intacto)
             val lp = scoreContainer.layoutParams as FrameLayout.LayoutParams
             lp.setMargins(lp.leftMargin, lp.topMargin, lp.rightMargin, bottomMarginPx)
             scoreContainer.layoutParams = lp
         }
+
 
         // 1) Mostrar/ocultar toggle según haya scoreboard configurado
         vm.selectedScoreboard.observe(viewLifecycleOwner) { name ->

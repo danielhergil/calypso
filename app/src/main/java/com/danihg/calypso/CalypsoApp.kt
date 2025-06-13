@@ -5,6 +5,7 @@ import android.app.Application
 import android.content.Context
 import android.content.pm.PackageManager
 import android.util.Log
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import com.danihg.calypso.camera.sources.CameraCalypsoSource
@@ -48,6 +49,9 @@ class CalypsoApp : Application(), ConnectChecker {
 
     override fun onCreate() {
         super.onCreate()
+
+        // ↙ aquí forzamos el tema oscuro para toda la App
+        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
 
         // 1) Leer alias del último perfil guardado
         val prefs = getSharedPreferences("stream_prefs", Context.MODE_PRIVATE)
