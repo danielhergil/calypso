@@ -25,6 +25,7 @@ import androidx.lifecycle.SavedStateViewModelFactory
 import com.danihg.calypso.R
 import com.danihg.calypso.camera.models.CameraSettingsViewModel
 import com.danihg.calypso.camera.models.CameraViewModel
+import com.danihg.calypso.camera.models.OverlaysSettingsViewModel
 import com.danihg.calypso.camera.models.SharedProfileViewModel
 import com.danihg.calypso.camera.sources.CameraCalypsoSource
 import com.google.android.material.button.MaterialButton
@@ -45,6 +46,8 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
     private val sharedProfileVm: SharedProfileViewModel by activityViewModels()
     private val cameraViewModel: CameraViewModel by activityViewModels()
     private val genericStream get() = cameraViewModel.genericStream
+
+    private val overlaysVm: OverlaysSettingsViewModel by activityViewModels()
 
     // Botones ya existentes ...
     private lateinit var btnSettings: MaterialButton
@@ -83,6 +86,8 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
     private val zoomHandler = Handler(Looper.getMainLooper())
     private var isZoomingIn = false
     private var isZoomingOut = false
+
+    private var prevScoreboardEnabled: Boolean? = null
 
 
     @SuppressLint("ClickableViewAccessibility")
@@ -138,17 +143,6 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
             lpAudio.marginStart = 220
             audioControls.layoutParams = lpAudio
         }
-
-//        root.post {
-//            val parentH = root.height
-//            val percent = 0.08f      // 15%
-//            val topMarginPx = (parentH * percent).toInt()
-//
-//            val lp = audio.layoutParams as FrameLayout.LayoutParams
-//            lp.topMargin = topMarginPx
-//            lp.gravity = lp.gravity or Gravity.END
-//            audio.layoutParams = lp
-//        }
 
         // —————————————————————————
         // 3.2) Ajuste dinámico tamaño tvProfileInfo (igual que antes)
@@ -343,6 +337,8 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         // 5) Listeners “Settings Stream” (igual que antes)
         // —————————————————————————
         btnSettingsStream.setOnClickListener {
+            prevScoreboardEnabled = overlaysVm.scoreboardEnabled.value ?: false
+            overlaysVm.setScoreboardEnabled(false)
             if (genericStream.isStreaming || genericStream.isRecording) {
                 parentFragmentManager.beginTransaction()
                     .replace(R.id.settings_container, ActiveStreamSettingsFragment())
@@ -663,6 +659,12 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
 
     override fun onResume() {
         super.onResume()
+        prevScoreboardEnabled?.let { wasEnabled ->
+            if (wasEnabled) {
+                overlaysVm.setScoreboardEnabled(true)
+            }
+            prevScoreboardEnabled = null
+        }
         requireActivity()
             .findViewById<FrameLayout>(R.id.overlays_container)
             .visibility = View.VISIBLE
