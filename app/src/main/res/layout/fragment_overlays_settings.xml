@@ -289,6 +289,102 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
+            <!-- Lineup -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_lineup"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardElevation="4dp"
+                app:cardCornerRadius="8dp"
+                android:layout_marginBottom="12dp"
+                android:clickable="true"
+                android:focusable="true">
+
+                <LinearLayout
+                    android:orientation="vertical"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content">
+
+                    <!-- Header -->
+                    <LinearLayout
+                        android:id="@+id/header_lineup"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Lineup"
+                            android:textSize="18sp"
+                            android:textStyle="bold"/>
+
+                        <ImageView
+                            android:id="@+id/iv_lineup_arrow"
+                            android:layout_width="34dp"
+                            android:layout_height="34dp"
+                            android:padding="8dp"
+                            android:src="@drawable/ic_arrow_down"
+                            app:tint="@color/white"/>
+                    </LinearLayout>
+
+                    <!-- Body (oculto por defecto) -->
+                    <LinearLayout
+                        android:id="@+id/body_lineup"
+                        android:orientation="vertical"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:visibility="gone"
+                        android:padding="12dp">
+
+                        <!-- Dropdown -->
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                            android:hint="Select Lineup">
+
+                            <AutoCompleteTextView
+                                android:id="@+id/act_lineup"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="none"/>
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <!-- Snapshot + Spinner -->
+                        <FrameLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:layout_gravity="center_horizontal">
+
+                            <ImageView
+                                android:id="@+id/iv_lineup_snapshot"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:adjustViewBounds="true"
+                                android:maxWidth="400dp"
+                                android:maxHeight="300dp"
+                                android:scaleType="centerInside"
+                                android:src="@drawable/ic_image_placeholder"/>
+
+                            <ProgressBar
+                                android:id="@+id/progress_lineup"
+                                style="?android:attr/progressBarStyleLarge"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_gravity="center"
+                                android:indeterminateTint="@color/calypso_red"
+                                android:visibility="gone"/>
+                        </FrameLayout>
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnSaveOverlays"
                 android:layout_width="match_parent"

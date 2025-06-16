@@ -24,6 +24,7 @@ import com.google.android.material.button.MaterialButton
 import com.pedro.encoder.input.gl.render.filters.`object`.ImageObjectFilterRender
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.net.URL
@@ -42,6 +43,9 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
     private lateinit var btnDec2:              MaterialButton
     private lateinit var spinnerScoreboard: ProgressBar
 
+    private lateinit var btnLineupOverlay: MaterialButton
+    private lateinit var spinnerLineup:     ProgressBar
+    private val lineupFilter by lazy { ImageObjectFilterRender() }
 
     private val scoreboardFilter by lazy { ImageObjectFilterRender() }
     private var logo1Bmp:    Bitmap? = null
@@ -50,6 +54,9 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
 
     // flags & counters
     private var isScoreboardAttached = false
+
+    private var snapshotBmpLineup: Bitmap? = null
+    private var isLineupAttached = false
 
     private lateinit var submenuOverlays: LinearLayout
     private lateinit var btnOverlaysToggle: MaterialButton
@@ -65,6 +72,8 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
         spinnerScoreboard    = view.findViewById(R.id.spinnerScoreboard)
         submenuOverlays      = view.findViewById(R.id.overlays_submenu)
         btnOverlaysToggle    = view.findViewById(R.id.btnOverlaysToggle)
+        btnLineupOverlay     = view.findViewById(R.id.btnLineupOverlay)
+        spinnerLineup        = view.findViewById(R.id.spinnerLineup)
 
         submenuOverlays.visibility = View.GONE
 
@@ -107,6 +116,44 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
             scoreContainer.layoutParams = lp
         }
 
+        vm.selectedLineup.observe(viewLifecycleOwner) { name ->
+            val has = name.isNotBlank()
+            btnLineupOverlay.visibility = if (has) View.VISIBLE else View.GONE
+            if (!has) vm.setLineupEnabled(false)
+        }
+
+        vm.lineupEnabled.observe(viewLifecycleOwner) { enabled ->
+            btnLineupOverlay.isChecked = enabled
+            val bg = if (enabled)
+                ContextCompat.getColor(requireContext(), R.color.calypso_red)
+            else Color.TRANSPARENT
+            btnLineupOverlay.backgroundTintList = ColorStateList.valueOf(bg)
+            btnLineupOverlay.iconTint =
+                ColorStateList.valueOf(if (enabled) Color.BLACK else Color.WHITE)
+
+            if (enabled) {
+                // adjuntar filtro con lineupFilter + snapshotBmpLineup...
+                // (idéntico a attachSnapshotOverlay, usando URL de full)
+            } else {
+//                genericStream.getGlInterface().removeFilter(lineupFilter)
+            }
+        }
+
+        btnLineupOverlay.setOnClickListener {
+            btnLineupOverlay.isEnabled = false
+            btnLineupOverlay.icon = null
+            btnLineupOverlay.visibility = View.GONE
+            spinnerLineup.visibility = View.VISIBLE
+
+            vm.setLineupEnabled(!(vm.lineupEnabled.value ?: false))
+
+            viewLifecycleOwner.lifecycleScope.launch {
+                delay(2000)
+                spinnerLineup.visibility = View.GONE
+                btnLineupOverlay.visibility = View.VISIBLE
+                btnLineupOverlay.isEnabled = true
+            }
+        }
 
         // 1) Mostrar/ocultar toggle según haya scoreboard configurado
         vm.selectedScoreboard.observe(viewLifecycleOwner) { name ->
