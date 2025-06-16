@@ -67,38 +67,60 @@
     <LinearLayout
         android:id="@+id/overlays_menu"
         android:orientation="vertical"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
         android:layout_marginEnd="26dp"
-        android:layout_marginBottom="80dp">
+        android:layout_marginBottom="80dp"
+        android:layout_height="wrap_content"
+        android:layout_width="wrap_content">
 
+        <!--  NEW: Submenú de overlays (invisible) -->
+        <LinearLayout
+            android:id="@+id/overlays_submenu"
+            android:orientation="vertical"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:visibility="gone">
 
-        <!-- 1) Toggle “Scoreboard Overlay” (invisible por defecto) -->
+            <!-- 1) Toggle “Scoreboard Overlay” -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnScoreboardOverlay"
+                style="@style/Widget.MaterialComponents.Button"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:alpha="0.8"
+                app:icon="@drawable/ic_scoreboard_overlay"
+                app:iconSize="24dp"
+                app:cornerRadius="28dp"
+                app:backgroundTint="#CCFFFFFF"/>
+
+            <ProgressBar
+                android:id="@+id/spinnerScoreboard"
+                style="?android:attr/progressBarStyleLarge"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center"
+                android:layout_marginBottom="12dp"
+                android:layout_marginStart="10dp"
+                android:indeterminateTint="@color/calypso_red"
+                android:visibility="gone"
+                android:indeterminate="true"/>
+
+        </LinearLayout>
+
+        <!--  NEW: Botón principal de “Overlays” (toggle submenu) -->
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnScoreboardOverlay"
+            android:id="@+id/btnOverlaysToggle"
             style="@style/Widget.MaterialComponents.Button"
             android:layout_width="56dp"
             android:layout_height="56dp"
-            android:visibility="gone"
             android:alpha="0.8"
-            app:icon="@drawable/ic_scoreboard_overlay"
+            app:icon="@drawable/ic_overlays"
             app:iconSize="24dp"
             app:cornerRadius="28dp"
-            app:backgroundTint="#CCFFFFFF"/>
+            app:backgroundTint="#CCFFFFFF"
+            android:visibility="gone"/>
 
-        <ProgressBar
-            android:id="@+id/spinnerScoreboard"
-            style="?android:attr/progressBarStyleLarge"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:layout_gravity="center"
-            android:layout_marginBottom="12dp"
-            android:indeterminateTint="@color/calypso_red"
-            android:visibility="gone"
-            android:indeterminate="true"/>
-
-        <!-- 1) Botón principal de “Overlays” -->
+        <!--  Botón principal de “Overlays” (abre settings) -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnOverlaysMenu"
             style="@style/Widget.MaterialComponents.Button"
@@ -109,7 +131,6 @@
             app:iconSize="24dp"
             app:backgroundTint="#CCFFFFFF"
             app:cornerRadius="28dp"/>
-
     </LinearLayout>
 
 </FrameLayout>

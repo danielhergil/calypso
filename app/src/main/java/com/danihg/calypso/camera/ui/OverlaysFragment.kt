@@ -13,6 +13,7 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import androidx.core.content.ContextCompat
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
@@ -50,6 +51,9 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
     // flags & counters
     private var isScoreboardAttached = false
 
+    private lateinit var submenuOverlays: LinearLayout
+    private lateinit var btnOverlaysToggle: MaterialButton
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         btnScoreboardOverlay = view.findViewById(R.id.btnScoreboardOverlay)
@@ -59,7 +63,10 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
         btnInc2              = view.findViewById(R.id.btn_inc_team2)
         btnDec2              = view.findViewById(R.id.btn_dec_team2)
         spinnerScoreboard    = view.findViewById(R.id.spinnerScoreboard)
+        submenuOverlays      = view.findViewById(R.id.overlays_submenu)
+        btnOverlaysToggle    = view.findViewById(R.id.btnOverlaysToggle)
 
+        submenuOverlays.visibility = View.GONE
 
         val root = requireActivity().findViewById<FrameLayout>(R.id.overlays_container)
         val scoreContainer = view.findViewById<LinearLayout>(R.id.score_buttons_container)
@@ -103,9 +110,17 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
 
         // 1) Mostrar/ocultar toggle según haya scoreboard configurado
         vm.selectedScoreboard.observe(viewLifecycleOwner) { name ->
-            val ok = name.isNotBlank()
-            btnScoreboardOverlay.visibility = if (ok) View.VISIBLE else View.GONE
-            if (!ok) vm.setScoreboardEnabled(false)
+//            val ok = name.isNotBlank()
+//            btnScoreboardOverlay.visibility = if (ok) View.VISIBLE else View.GONE
+//            if (!ok) vm.setScoreboardEnabled(false)
+            val hasOverlay = name.isNotBlank()
+            btnOverlaysToggle.visibility = if (hasOverlay) View.VISIBLE else View.GONE
+
+            if (!hasOverlay) {
+                // Si se quita la configuración, colapsamos el submenú y desactivamos el scoreboard
+                submenuOverlays.visibility = View.GONE
+                vm.setScoreboardEnabled(false)
+            }
         }
 
         // 2) Estado checked + aplicar/quitar filtro
@@ -148,6 +163,11 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
 //                attachSnapshotOverlay()
 //            }
 //        }
+        btnOverlaysToggle.setOnClickListener {
+            // Alternamos el submenú de overlays
+            val expanded = submenuOverlays.isVisible
+            submenuOverlays.visibility = if (expanded) View.GONE else View.VISIBLE
+        }
 
         // 3) Toggle al click
         btnScoreboardOverlay.setOnClickListener {
