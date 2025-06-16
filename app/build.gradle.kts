@@ -28,6 +28,13 @@ android {
                 "proguard-rules.pro"
             )
         }
+
+        create("debugRelease") {
+            initWith(getByName("release"))
+            isDebuggable = true
+            versionNameSuffix = "-debug"
+            signingConfig = signingConfigs.getByName("debug") // o "release" si tienes una clave real
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

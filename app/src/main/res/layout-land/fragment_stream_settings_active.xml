@@ -59,7 +59,7 @@
                 android:id="@+id/tvVideoSettingsHeader"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Video Settings"
+                android:text="@string/stream_settings_active_video_settings"
                 style="@style/TextAppearance.MaterialComponents.Headline6"
                 android:layout_marginBottom="8dp" />
 
@@ -69,7 +69,7 @@
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Video Source"
+                android:hint="@string/stream_settings_active_video_source"
                 android:layout_marginBottom="12dp">
 
                 <AutoCompleteTextView
@@ -84,7 +84,7 @@
                 android:id="@+id/tilVideoBitrate"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Bitrate"
+                android:hint="@string/stream_settings_active_bitrate"
                 app:suffixText="Mbps"
                 android:layout_marginBottom="12dp">
 
@@ -93,7 +93,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:inputType="number"
-                    android:text="5" />
+                    android:text="@string/stream_settings_active_5" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <!-- Encabezado Audio Settings -->
@@ -101,7 +101,7 @@
                 android:id="@+id/tvAudioSettingsHeader"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Audio Settings"
+                android:text="@string/stream_settings_active_audio_settings"
                 style="@style/TextAppearance.MaterialComponents.Headline6"
                 android:layout_marginTop="24dp"
                 android:layout_marginBottom="8dp" />
@@ -112,7 +112,7 @@
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Audio Source"
+                android:hint="@string/stream_settings_active_audio_source"
                 android:layout_marginBottom="12dp">
 
                 <AutoCompleteTextView
@@ -128,7 +128,7 @@
                 style="@style/Widget.MaterialComponents.Button"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Apply Changes"
+                android:text="@string/stream_settings_active_apply_changes"
                 android:layout_marginTop="24dp"
                 app:backgroundTint="@color/calypso_red"
                 android:textColor="@android:color/white"

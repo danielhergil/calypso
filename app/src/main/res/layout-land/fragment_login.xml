@@ -29,7 +29,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Email"
+                    android:text="@string/login_email"
                     android:textColor="@android:color/white"
                     android:layout_marginTop="16dp"
                     android:layout_marginBottom="4dp" />
@@ -40,14 +40,13 @@
                     android:layout_height="wrap_content"
                     android:backgroundTint="@android:color/white"
                     android:textColor="@android:color/white"
-                    android:hint=""
                     android:inputType="textEmailAddress" />
 
                 <!-- Password -->
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Password"
+                    android:text="@string/login_password"
                     android:textColor="@android:color/white"
                     android:layout_marginTop="24dp"
                     android:layout_marginBottom="4dp" />
@@ -65,7 +64,6 @@
                         android:layout_weight="1"
                         android:backgroundTint="@android:color/white"
                         android:textColor="@android:color/white"
-                        android:hint=""
                         android:inputType="textPassword" />
 
                     <ImageButton
@@ -75,7 +73,7 @@
                         android:paddingBottom="20dp"
                         android:src="@drawable/ic_visibility"
                         android:background="?attr/selectableItemBackgroundBorderless"
-                        android:contentDescription="Show or hide password"
+                        android:contentDescription="@string/login_show_or_hide_password"
                         app:tint="@android:color/white" />
                 </LinearLayout>
 
@@ -84,7 +82,7 @@
                     android:id="@+id/cbRemember"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Remember me"
+                    android:text="@string/login_remember_me"
                     android:textColor="@android:color/white"
                     android:layout_marginTop="16dp" />
 
@@ -118,7 +116,7 @@
                         style="@style/Widget.MaterialComponents.Button"
                         android:layout_width="match_parent"
                         android:layout_height="56dp"
-                        android:text="Log In"
+                        android:text="@string/login_log_in"
                         android:textAllCaps="false"
                         android:textColor="@android:color/black"
                         app:backgroundTint="@color/calypso_red"

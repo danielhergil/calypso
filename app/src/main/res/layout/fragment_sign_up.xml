@@ -28,7 +28,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Email"
+                android:text="@string/sign_up_email"
                 android:textColor="@android:color/white"
                 android:layout_marginTop="24dp" />
 
@@ -38,7 +38,6 @@
                 android:layout_height="wrap_content"
                 android:backgroundTint="@android:color/white"
                 android:textColor="@android:color/white"
-                android:hint=""
                 android:inputType="textEmailAddress" />
 
             <!-- Password -->
@@ -62,7 +61,6 @@
                     android:layout_weight="1"
                     android:backgroundTint="@android:color/white"
                     android:textColor="@android:color/white"
-                    android:hint=""
                     android:inputType="textPassword" />
 
                 <ImageButton
@@ -72,7 +70,7 @@
                     android:paddingBottom="20dp"
                     android:src="@drawable/ic_visibility"
                     android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="Show or hide password"
+                    android:contentDescription="@string/sign_up_show_or_hide_password"
                     app:tint="@android:color/white" />
             </LinearLayout>
 
@@ -105,7 +103,7 @@
                     android:paddingBottom="20dp"
                     android:src="@drawable/ic_visibility"
                     android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="Show or hide password"
+                    android:contentDescription="@string/login_show_or_hide_password"
                     app:tint="@android:color/white" />
             </LinearLayout>
 

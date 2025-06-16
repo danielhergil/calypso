@@ -318,7 +318,7 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                 settingsVm.setManualOptionsVisible(false)
 
                 // Apagamos “modo manual global” (para el caso ISO)
-                settingsVm.setManualMode(false)
+//                settingsVm.setManualMode(false)
             } else {
                 // Alternamos “Stream / Camera” (igual que antes)
                 val nextVis = if (btnSettingsStream.isGone) View.VISIBLE else View.GONE

@@ -19,7 +19,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="New Team"
+            android:text="@string/item_new_team_new_team"
             android:textSize="18sp"
             android:textStyle="bold"
             android:textColor="@color/white"/>
@@ -29,7 +29,7 @@
             android:layout_marginTop="12dp"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Name">
+            android:hint="@string/item_new_team_name">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/etNewTeamName"
@@ -44,7 +44,7 @@
             android:layout_marginTop="8dp"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Alias">
+            android:hint="@string/item_new_team_alias">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/etNewTeamAlias"
@@ -109,7 +109,7 @@
             android:layout_height="wrap_content"
             android:backgroundTint="@color/secondary_button"
             android:textColor="@android:color/black"
-            android:text="Add Player"/>
+            android:text="@string/item_new_team_add_player"/>
 
         <!-- Guardar nuevo equipo -->
         <Button
@@ -119,6 +119,6 @@
             android:layout_height="wrap_content"
             android:backgroundTint="@color/calypso_red"
             android:textColor="@android:color/white"
-            android:text="Save"/>
+            android:text="@string/item_new_team_save"/>
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

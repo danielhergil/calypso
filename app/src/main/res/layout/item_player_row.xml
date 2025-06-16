@@ -11,7 +11,7 @@
         android:layout_weight="1"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:hint="Name">
+        android:hint="@string/item_player_row_name">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/etPlayerName"
@@ -24,7 +24,7 @@
         android:layout_marginStart="8dp"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:hint="Nº">
+        android:hint="@string/item_player_row_n">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/etPlayerNumber"

@@ -37,7 +37,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
-        android:text="Add New Profile"
+        android:text="@string/stream_settings_add_new_profile"
         app:backgroundTint="@color/calypso_red"
         android:textColor="@android:color/white"
         app:cornerRadius="4dp"
@@ -73,7 +73,7 @@
                 style="@style/Widget.MaterialComponents.Button"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Add New Profile"
+                android:text="@string/stream_settings_add_new_profile_2"
                 android:layout_gravity="center_horizontal"
                 android:layout_marginTop="16dp"
                 app:backgroundTint="@color/calypso_red"
@@ -96,7 +96,7 @@
                     android:id="@+id/tvProfileSettingsHeader"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Profile Settings"
+                    android:text="@string/stream_settings_profile_settings"
                     style="@style/TextAppearance.MaterialComponents.Headline6"
                     android:layout_marginBottom="8dp" />
 
@@ -104,7 +104,7 @@
                     android:id="@+id/tilProfileAlias"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Profile Name">
+                    android:hint="@string/stream_settings_profile_name">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etProfileAlias"
@@ -118,7 +118,7 @@
                     android:id="@+id/tvStreamConnectionsHeader"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Stream Connections"
+                    android:text="@string/stream_settings_stream_connections"
                     style="@style/TextAppearance.MaterialComponents.Headline6"
                     android:layout_marginTop="16dp"
                     android:layout_marginBottom="8dp" />
@@ -129,7 +129,7 @@
                     style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Select Connection"
+                    android:hint="@string/stream_settings_select_connection"
                     android:visibility="gone"
                     android:layout_marginBottom="12dp">
 
@@ -143,7 +143,7 @@
                     android:id="@+id/tilConnectionUrl"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="RTMP URL">
+                    android:hint="@string/stream_settings_rtmp_url">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/etConnectionUrl"
@@ -157,7 +157,7 @@
                     android:id="@+id/tilConnectionKey"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Stream Key"
+                    android:hint="@string/stream_settings_stream_key"
                     android:layout_marginTop="8dp">
 
                     <com.google.android.material.textfield.TextInputEditText
@@ -172,7 +172,7 @@
                     android:id="@+id/tilConnectionAlias"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Connection Alias"
+                    android:hint="@string/stream_settings_connection_alias"
                     android:layout_marginTop="8dp">
 
                     <com.google.android.material.textfield.TextInputEditText
@@ -197,7 +197,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="ADD"
+                        android:text="@string/stream_settings_add"
                         app:backgroundTint="@color/calypso_red"
                         android:textColor="@android:color/white"
                         app:cornerRadius="4dp"
@@ -210,7 +210,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:visibility="gone"
-                        android:text="UPDATE"
+                        android:text="@string/stream_settings_update"
                         app:backgroundTint="@color/secondary_button"
                         android:textColor="@android:color/white"
                         app:cornerRadius="4dp"
@@ -224,7 +224,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:visibility="gone"
-                        android:text="DELETE"
+                        android:text="@string/stream_settings_delete"
                         app:backgroundTint="@color/secondary_button"
                         android:textColor="@android:color/white"
                         app:cornerRadius="4dp"
@@ -238,7 +238,7 @@
                     android:id="@+id/tvVideoSettingsHeader"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Streaming Video Settings"
+                    android:text="@string/stream_settings_streaming_video_settings"
                     style="@style/TextAppearance.MaterialComponents.Headline6"
                     android:layout_marginTop="24dp"
                     android:layout_marginBottom="8dp" />
@@ -249,7 +249,7 @@
                     style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Video Source"
+                    android:hint="@string/stream_settings_video_source"
                     android:layout_marginBottom="12dp">
 
                     <AutoCompleteTextView
@@ -265,7 +265,7 @@
                     style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Codec"
+                    android:hint="@string/stream_settings_codec"
                     android:layout_marginBottom="12dp">
 
                     <AutoCompleteTextView
@@ -281,7 +281,7 @@
                     style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Resolution"
+                    android:hint="@string/stream_settings_resolution"
                     android:layout_marginBottom="12dp">
 
                     <AutoCompleteTextView
@@ -297,7 +297,7 @@
                     style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="FPS"
+                    android:hint="@string/stream_settings_fps"
                     android:layout_marginBottom="12dp">
 
                     <AutoCompleteTextView
@@ -312,7 +312,7 @@
                     android:id="@+id/tilVideoBitrate"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Bitrate"
+                    android:hint="@string/stream_settings_bitrate"
                     app:suffixText="Mbps"
                     android:layout_marginBottom="12dp">
 
@@ -321,7 +321,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:inputType="number"
-                        android:text="5" />
+                        android:text="@string/stream_settings_5" />
 
                 </com.google.android.material.textfield.TextInputLayout>
 
@@ -330,7 +330,7 @@
                     android:id="@+id/tvRecordSettingsHeader"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Record Video Settings"
+                    android:text="@string/stream_settings_record_video_settings"
                     style="@style/TextAppearance.MaterialComponents.Headline6"
                     android:layout_marginTop="24dp"
                     android:layout_marginBottom="8dp" />
@@ -341,7 +341,7 @@
                     style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Resolution"
+                    android:hint="@string/stream_settings_resolution_2"
                     android:layout_marginBottom="12dp">
 
                     <AutoCompleteTextView
@@ -356,7 +356,7 @@
                     android:id="@+id/tilRecordBitrate"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Bitrate"
+                    android:hint="@string/stream_settings_bitrate_2"
                     app:suffixText="Mbps"
                     android:layout_marginBottom="12dp">
 
@@ -365,7 +365,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:inputType="number"
-                        android:text="5" />
+                        android:text="@string/stream_settings_5_2" />
 
                 </com.google.android.material.textfield.TextInputLayout>
 
@@ -374,7 +374,7 @@
                     android:id="@+id/tvAudioSettingsHeader"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Audio Settings"
+                    android:text="@string/stream_settings_audio_settings"
                     style="@style/TextAppearance.MaterialComponents.Headline6"
                     android:layout_marginTop="24dp"
                     android:layout_marginBottom="8dp" />
@@ -385,7 +385,7 @@
                     style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Audio Source"
+                    android:hint="@string/stream_settings_audio_source"
                     android:layout_marginBottom="12dp">
 
                     <AutoCompleteTextView
@@ -401,7 +401,7 @@
                     style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Audio Bitrate (kbps)"
+                    android:hint="@string/stream_settings_audio_bitrate_kbps"
                     android:layout_marginBottom="12dp">
 
                     <AutoCompleteTextView
@@ -417,7 +417,7 @@
                     style="@style/Widget.MaterialComponents.Button"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Create Profile"
+                    android:text="@string/stream_settings_create_profile"
                     android:layout_marginTop="24dp"
                     app:backgroundTint="@color/calypso_red"
                     android:textColor="@android:color/white"

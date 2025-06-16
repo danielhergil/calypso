@@ -63,7 +63,7 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="Teams"
+                            android:text="@string/overlays_settings_teams"
                             android:textSize="18sp"
                             android:textStyle="bold" />
 
@@ -98,7 +98,7 @@
                                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:hint="Equipo 1">
+                                android:hint="@string/overlays_settings_team_1">
 
                                 <AutoCompleteTextView
                                     android:id="@+id/act_team1"
@@ -145,7 +145,7 @@
                                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:hint="Equipo 2">
+                                android:hint="@string/overlays_settings_team_2">
 
                                 <AutoCompleteTextView
                                     android:id="@+id/act_team2"
@@ -212,7 +212,7 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="Scoreboard"
+                            android:text="@string/overlays_settings_scoreboard"
                             android:textSize="18sp"
                             android:textStyle="bold"/>
                         <ImageView
@@ -239,7 +239,7 @@
                             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:hint="Select Scoreboard">
+                            android:hint="@string/overlays_settings_select_scoreboard">
 
                             <AutoCompleteTextView
                                 android:id="@+id/act_scoreboard"
@@ -282,7 +282,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="24dp"
-                            android:text="Show logos"
+                            android:text="@string/overlays_settings_show_logos"
                             android:textColor="@color/white"
                             android:checked="true"/>
                     </LinearLayout>
@@ -293,7 +293,7 @@
                 android:id="@+id/btnSaveOverlays"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Guardar cambios"
+                android:text="@string/overlays_settings_save_changes"
                 android:layout_marginTop="16dp"
                 app:backgroundTint="@color/calypso_red"
                 android:textColor="@android:color/white"
