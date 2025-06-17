@@ -137,6 +137,35 @@
                     android:indeterminateTint="@color/calypso_red"
                     android:visibility="gone"/>
             </FrameLayout>
+
+            <!-- Cover Overlay -->
+            <FrameLayout
+                android:id="@+id/frameCoverOverlay"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:layout_marginEnd="8dp">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnCoverOverlay"
+                    style="@style/Widget.MaterialComponents.Button"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:alpha="0.8"
+                    app:icon="@drawable/ic_cover_overlay"
+                    app:iconSize="24dp"
+                    app:cornerRadius="28dp"
+                    app:backgroundTint="#CCFFFFFF"
+                    android:visibility="gone"/>
+
+                <ProgressBar
+                    android:id="@+id/spinnerCover"
+                    style="?android:attr/progressBarStyleLarge"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="center"
+                    android:indeterminateTint="@color/calypso_red"
+                    android:visibility="gone"/>
+            </FrameLayout>
         </LinearLayout>
 
         <!-- Toggle del submenú -->

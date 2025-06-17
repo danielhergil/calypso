@@ -1,6 +1,8 @@
 package com.danihg.calypso.camera.ui
 
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
@@ -17,6 +19,7 @@ import com.danihg.calypso.R
 import com.danihg.calypso.camera.models.CameraViewModel
 import com.danihg.calypso.camera.models.OverlaysSettingsViewModel
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.textfield.TextInputEditText
 
 class OverlaysSettingsFragment : Fragment(R.layout.fragment_overlays_settings) {
 
@@ -53,6 +56,15 @@ class OverlaysSettingsFragment : Fragment(R.layout.fragment_overlays_settings) {
     private lateinit var ivLineupSnapshot: ImageView
     private lateinit var progressLineup:    ProgressBar
 
+    // Cover
+    private lateinit var headerCover: LinearLayout
+    private lateinit var bodyCover:   LinearLayout
+    private lateinit var ivCoverArrow: ImageView
+    private lateinit var actCover:     AutoCompleteTextView
+    private lateinit var ivCoverSnapshot: ImageView
+    private lateinit var progressCover:    ProgressBar
+    private lateinit var etCoverLabel: TextInputEditText
+
     private lateinit var btnSave: MaterialButton
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -75,6 +87,13 @@ class OverlaysSettingsFragment : Fragment(R.layout.fragment_overlays_settings) {
         actLineup          = view.findViewById(R.id.act_lineup)
         ivLineupSnapshot   = view.findViewById(R.id.iv_lineup_snapshot)
         progressLineup     = view.findViewById(R.id.progress_lineup)
+        headerCover        = view.findViewById(R.id.header_cover)
+        bodyCover          = view.findViewById(R.id.body_cover)
+        ivCoverArrow       = view.findViewById(R.id.iv_cover_arrow)
+        actCover           = view.findViewById(R.id.act_cover)
+        ivCoverSnapshot    = view.findViewById(R.id.iv_cover_snapshot)
+        progressCover      = view.findViewById(R.id.progress_cover)
+        etCoverLabel      = view.findViewById(R.id.et_cover_label)
 
         btnClose.setOnClickListener { parentFragmentManager.popBackStack() }
         headerTeams.setOnClickListener {
@@ -198,6 +217,48 @@ class OverlaysSettingsFragment : Fragment(R.layout.fragment_overlays_settings) {
             vm.setLineup(name)
             loadLineupSnapshot(name)
         }
+
+        headerCover.setOnClickListener {
+            val open = bodyCover.isVisible
+            bodyCover.visibility = if (open) View.GONE else View.VISIBLE
+            ivCoverArrow.rotation = if (open) 0f else 180f
+        }
+
+        vm.covers.observe(viewLifecycleOwner) { list ->
+            val names = list.map { it.name }
+            val adapter = ArrayAdapter(requireContext(),
+                android.R.layout.simple_list_item_1,
+                names)
+            actCover.setAdapter(adapter)
+        }
+        vm.selectedCover.value
+            ?.takeIf(String::isNotBlank)
+            ?.let { name ->
+                actCover.setText(name, false)
+                loadCoverSnapshot(name)
+            }
+        actCover.setOnItemClickListener { _, _, pos, _ ->
+            val name = actCover.adapter.getItem(pos) as String
+            vm.setCover(name)
+            loadCoverSnapshot(name)
+        }
+        vm.selectedCoverLabel.observe(viewLifecycleOwner) { text ->
+            if (etCoverLabel.text.toString() != text) {
+                etCoverLabel.setText(text)
+            }
+        }
+        etCoverLabel.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) { /*no-op*/ }
+
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                val input = s?.toString().orEmpty().take(50)
+                if (input != vm.selectedCoverLabel.value) {
+                    vm.setCoverLabel(input)
+                }
+            }
+
+            override fun afterTextChanged(s: Editable?) { /*no-op*/ }
+        })
     }
 
     /** Carga logo de Team */
@@ -331,6 +392,38 @@ class OverlaysSettingsFragment : Fragment(R.layout.fragment_overlays_settings) {
                     onError = { _, _ ->
                         progressLineup.visibility = View.GONE
                         ivLineupSnapshot.visibility = View.VISIBLE
+                    }
+                )
+            }
+        }
+    }
+
+    private fun loadCoverSnapshot(name: String) {
+        val item = vm.covers.value?.firstOrNull { it.name == name }
+        val url  = item?.snapshots?.get("full")
+
+        if (url.isNullOrBlank()) {
+            progressCover.visibility = View.GONE
+            ivCoverSnapshot.setImageResource(R.drawable.ic_image_placeholder)
+            ivCoverSnapshot.visibility = View.VISIBLE
+        } else {
+            ivCoverSnapshot.visibility = View.INVISIBLE
+            progressCover.visibility = View.VISIBLE
+            ivCoverSnapshot.load(url) {
+                placeholder(null)
+                error(R.drawable.ic_image_placeholder)
+                listener(
+                    onStart = {
+                        progressCover.visibility = View.VISIBLE
+                        ivCoverSnapshot.visibility = View.INVISIBLE
+                    },
+                    onSuccess = { _, _ ->
+                        progressCover.visibility = View.GONE
+                        ivCoverSnapshot.visibility = View.VISIBLE
+                    },
+                    onError = { _, _ ->
+                        progressCover.visibility = View.GONE
+                        ivCoverSnapshot.visibility = View.VISIBLE
                     }
                 )
             }

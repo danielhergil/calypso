@@ -20,6 +20,7 @@ import androidx.lifecycle.lifecycleScope
 import com.danihg.calypso.R
 import com.danihg.calypso.camera.models.CameraViewModel
 import com.danihg.calypso.camera.models.OverlaysSettingsViewModel
+import com.danihg.calypso.overlays.filter.CoverOverlayGenerator
 import com.danihg.calypso.overlays.filter.LineupOverlayGenerator
 import com.google.android.material.button.MaterialButton
 import com.pedro.encoder.input.gl.render.filters.`object`.ImageObjectFilterRender
@@ -47,6 +48,13 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
     private lateinit var btnLineupOverlay: MaterialButton
     private lateinit var spinnerLineup:     ProgressBar
     private val lineupFilter by lazy { ImageObjectFilterRender() }
+
+    private lateinit var btnCoverOverlay:  MaterialButton
+    private lateinit var spinnerCover:     ProgressBar
+    private val coverFilter      by lazy { ImageObjectFilterRender() }
+    private var isCoverAttached  = false
+    private lateinit var frameCoverOverlay: FrameLayout
+    private var coverLabel: String = ""
 
     private val scoreboardFilter by lazy { ImageObjectFilterRender() }
     private var logo1Bmp:    Bitmap? = null
@@ -77,22 +85,15 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
         spinnerLineup        = view.findViewById(R.id.spinnerLineup)
         val frameSB          = view.findViewById<FrameLayout>(R.id.frameScoreboardOverlay)
         val frameLU          = view.findViewById<FrameLayout>(R.id.frameLineupOverlay)
+        btnCoverOverlay      = view.findViewById(R.id.btnCoverOverlay)
+        spinnerCover         = view.findViewById(R.id.spinnerCover)
+        frameCoverOverlay    = view.findViewById(R.id.frameCoverOverlay)
 
         submenuOverlays.visibility = View.GONE
 
         val root = requireActivity().findViewById<FrameLayout>(R.id.overlays_container)
         val scoreContainer = view.findViewById<LinearLayout>(R.id.score_buttons_container)
 
-//        root.post {
-//            val parentH = root.height
-//            val percentFromBottom = 0.15f
-//            val bottomMarginPx = (parentH * percentFromBottom).toInt()
-//
-//            val lp = scoreContainer.layoutParams as FrameLayout.LayoutParams
-//            lp.setMargins(lp.leftMargin, lp.topMargin, lp.rightMargin, bottomMarginPx)
-//
-//            scoreContainer.layoutParams = lp
-//        }
         root.post {
             val parentH = root.height.toFloat()
             val parentW = root.width.toFloat()
@@ -119,11 +120,34 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
             scoreContainer.layoutParams = lp
         }
 
-//        vm.selectedLineup.observe(viewLifecycleOwner) { name ->
-//            val has = name.isNotBlank()
-//            btnLineupOverlay.visibility = if (has) View.VISIBLE else View.GONE
-//            if (!has) vm.setLineupEnabled(false)
-//        }
+        vm.selectedCoverLabel.observe(viewLifecycleOwner) { label ->
+            coverLabel = label
+        }
+
+        vm.selectedCover.observe(viewLifecycleOwner) { name ->
+            val has = name.isNotBlank()
+            btnCoverOverlay.visibility = if (has) View.VISIBLE else View.GONE
+            if (!has) vm.setCoverEnabled(false)
+            updateOverlaysToggle()
+        }
+
+        vm.coverEnabled.observe(viewLifecycleOwner) { enabled ->
+            btnCoverOverlay.isChecked = enabled
+            val bg = if (enabled)
+                ContextCompat.getColor(requireContext(), R.color.calypso_red)
+            else Color.TRANSPARENT
+            btnCoverOverlay.backgroundTintList = ColorStateList.valueOf(bg)
+            btnCoverOverlay.iconTint =
+                ColorStateList.valueOf(if (enabled) Color.BLACK else Color.WHITE)
+
+            if (enabled) {
+                attachCoverOverlay()
+            } else if (isCoverAttached) {
+                genericStream.getGlInterface().removeFilter(coverFilter)
+                isCoverAttached = false
+            }
+        }
+
         vm.selectedLineup.observe(viewLifecycleOwner)  { name ->
             val has = name.isNotBlank()
             btnLineupOverlay.visibility = if (has) View.VISIBLE else View.GONE
@@ -151,23 +175,32 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
             }
         }
 
-        btnLineupOverlay.setOnClickListener {
+        btnCoverOverlay.setOnClickListener {
+            // deshabilita todos mientras animación
             btnScoreboardOverlay.isEnabled = false
             btnLineupOverlay.isEnabled     = false
+            btnCoverOverlay.isEnabled      = false
+
+            // oculta íconos y muestra spinners
             btnScoreboardOverlay.icon = null
             btnLineupOverlay.icon     = null
-
+            btnCoverOverlay.icon      = null
             btnScoreboardOverlay.visibility = View.GONE
             btnLineupOverlay.visibility     = View.GONE
+            btnCoverOverlay.visibility      = View.GONE
             spinnerScoreboard.visibility    = View.VISIBLE
             spinnerLineup.visibility        = View.VISIBLE
+            spinnerCover.visibility         = View.VISIBLE
 
-            vm.setLineupEnabled(!(vm.lineupEnabled.value ?: false))
+            // cambia estado en el ViewModel
+            vm.setCoverEnabled(!(vm.coverEnabled.value ?: false))
 
+            // tras 3s, restaurar visibilidad e íconos
             viewLifecycleOwner.lifecycleScope.launch {
                 delay(3000)
                 spinnerScoreboard.visibility = View.GONE
                 spinnerLineup.visibility     = View.GONE
+                spinnerCover.visibility      = View.GONE
 
                 btnScoreboardOverlay.icon = ContextCompat.getDrawable(
                     requireContext(), R.drawable.ic_scoreboard_overlay
@@ -175,12 +208,72 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
                 btnLineupOverlay.icon = ContextCompat.getDrawable(
                     requireContext(), R.drawable.ic_lineup_overlay
                 )
+                btnCoverOverlay.icon = ContextCompat.getDrawable(
+                    requireContext(), R.drawable.ic_cover_overlay
+                )
 
                 btnScoreboardOverlay.visibility = View.VISIBLE
                 btnLineupOverlay.visibility     = View.VISIBLE
+                btnCoverOverlay.visibility      = View.VISIBLE
 
                 btnScoreboardOverlay.isEnabled = true
                 btnLineupOverlay.isEnabled     = true
+                btnCoverOverlay.isEnabled      = true
+            }
+        }
+
+        btnLineupOverlay.setOnClickListener {
+            // 1) Deshabilitamos TODOS los botones
+            btnScoreboardOverlay.isEnabled = false
+            btnLineupOverlay    .isEnabled = false
+            btnCoverOverlay     .isEnabled = false
+
+            // 2) Quitamos todos los iconos y ocultamos los botones
+            btnScoreboardOverlay.icon = null
+            btnLineupOverlay    .icon = null
+            btnCoverOverlay     .icon = null
+
+            btnScoreboardOverlay.visibility = View.GONE
+            btnLineupOverlay    .visibility = View.GONE
+            btnCoverOverlay     .visibility = View.GONE
+
+            // 3) Mostramos TODOS los spinners
+            spinnerScoreboard.visibility = View.VISIBLE
+            spinnerLineup    .visibility = View.VISIBLE
+            spinnerCover     .visibility = View.VISIBLE
+
+            // 4) Cambiamos el estado en el ViewModel
+            vm.setLineupEnabled(!(vm.lineupEnabled.value ?: false))
+
+            // 5) Tras el delay, restauramos todo
+            viewLifecycleOwner.lifecycleScope.launch {
+                delay(3000)
+
+                // Ocultamos spinners
+                spinnerScoreboard.visibility = View.GONE
+                spinnerLineup    .visibility = View.GONE
+                spinnerCover     .visibility = View.GONE
+
+                // Volvemos a poner los iconos
+                btnScoreboardOverlay.icon = ContextCompat.getDrawable(
+                    requireContext(), R.drawable.ic_scoreboard_overlay
+                )
+                btnLineupOverlay    .icon = ContextCompat.getDrawable(
+                    requireContext(), R.drawable.ic_lineup_overlay
+                )
+                btnCoverOverlay     .icon = ContextCompat.getDrawable(
+                    requireContext(), R.drawable.ic_cover_overlay
+                )
+
+                // Restauramos visibilidad según selección actual
+                btnScoreboardOverlay.visibility = if (vm.selectedScoreboard.value?.isNotBlank() == true) View.VISIBLE else View.GONE
+                btnLineupOverlay    .visibility = if (vm.selectedLineup   .value?.isNotBlank() == true) View.VISIBLE else View.GONE
+                btnCoverOverlay     .visibility = if (vm.selectedCover    .value?.isNotBlank() == true) View.VISIBLE else View.GONE
+
+                // Re-habilitamos los botones
+                btnScoreboardOverlay.isEnabled = true
+                btnLineupOverlay    .isEnabled = true
+                btnCoverOverlay     .isEnabled = true
             }
         }
 
@@ -244,44 +337,66 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
                 // Actualizo visibilidad de cada FrameLayout dentro del submenu
                 frameLU.visibility      = if (vm.selectedLineup.value?.isNotBlank() == true) View.VISIBLE else View.GONE
                 frameSB.visibility = if (vm.selectedScoreboard.value?.isNotBlank() == true) View.VISIBLE else View.GONE
+                frameCoverOverlay.visibility = if (vm.selectedCover.value?.isNotBlank() == true)
+                    View.VISIBLE else View.GONE
 
                 // Finalmente abro el submenú sólo si hay al menos uno
-                submenuOverlays.visibility = if (frameLU.isVisible || frameSB.isVisible) View.VISIBLE else View.GONE
+                submenuOverlays.visibility = if (frameLU.isVisible || frameSB.isVisible || frameCoverOverlay.isVisible) View.VISIBLE else View.GONE
             }
         }
 
         // 3) Toggle al click
         btnScoreboardOverlay.setOnClickListener {
-            // Desactiva el botón y muestra el spinner
+            // 1) Deshabilitar todos los botones
             btnScoreboardOverlay.isEnabled = false
-            btnLineupOverlay.isEnabled     = false
-            btnScoreboardOverlay.icon = null
-            btnLineupOverlay.icon     = null
-            btnScoreboardOverlay.visibility = View.GONE
-            btnLineupOverlay.visibility     = View.GONE
-            spinnerScoreboard.visibility    = View.VISIBLE
-            spinnerLineup.visibility        = View.VISIBLE
+            btnLineupOverlay    .isEnabled = false
+            btnCoverOverlay     .isEnabled = false
 
-            // Cambia el estado en el ViewModel
+            // 2) Ocultar íconos y mostrar spinners en los tres
+            btnScoreboardOverlay.icon = null
+            btnLineupOverlay    .icon = null
+            btnCoverOverlay     .icon = null
+
+            btnScoreboardOverlay.visibility = View.GONE
+            btnLineupOverlay    .visibility = View.GONE
+            btnCoverOverlay     .visibility = View.GONE
+
+            spinnerScoreboard.visibility = View.VISIBLE
+            spinnerLineup    .visibility = View.VISIBLE
+            spinnerCover     .visibility = View.VISIBLE
+
+            // 3) Cambiar estado en el VM
             vm.setScoreboardEnabled(!(vm.scoreboardEnabled.value ?: false))
 
-            // Espera 2 segundos antes de restaurar el botón
+            // 4) Restaurar tras delay
             viewLifecycleOwner.lifecycleScope.launch {
                 delay(3000)
 
-                // Restaurar estado del botón
+                // Ocultar todos los spinners
+                spinnerScoreboard.visibility = View.GONE
+                spinnerLineup    .visibility = View.GONE
+                spinnerCover     .visibility = View.GONE
+
+                // Restaurar íconos
                 btnScoreboardOverlay.icon = ContextCompat.getDrawable(
                     requireContext(), R.drawable.ic_scoreboard_overlay
                 )
-                btnLineupOverlay.icon = ContextCompat.getDrawable(
+                btnLineupOverlay    .icon = ContextCompat.getDrawable(
                     requireContext(), R.drawable.ic_lineup_overlay
                 )
-                spinnerScoreboard.visibility = View.GONE
-                spinnerLineup.visibility     = View.GONE
-                btnScoreboardOverlay.visibility = View.VISIBLE
-                btnLineupOverlay.visibility     = View.VISIBLE
+                btnCoverOverlay     .icon = ContextCompat.getDrawable(
+                    requireContext(), R.drawable.ic_cover_overlay
+                )
+
+                // Restaurar visibilidades según selección actual
+                btnScoreboardOverlay.visibility = if (vm.selectedScoreboard.value?.isNotBlank() == true) View.VISIBLE else View.GONE
+                btnLineupOverlay    .visibility = if (vm.selectedLineup   .value?.isNotBlank() == true) View.VISIBLE else View.GONE
+                btnCoverOverlay     .visibility = if (vm.selectedCover    .value?.isNotBlank() == true) View.VISIBLE else View.GONE
+
+                // Re-habilitar todos
                 btnScoreboardOverlay.isEnabled = true
-                btnLineupOverlay.isEnabled     = true
+                btnLineupOverlay    .isEnabled = true
+                btnCoverOverlay     .isEnabled = true
             }
         }
 
@@ -291,6 +406,16 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
             if (vm.scoreboardEnabled.value == true && isScoreboardAttached) {
                 genericStream.getGlInterface().removeFilter(scoreboardFilter)
                 isScoreboardAttached = false
+            }
+            // idem con Lineup
+            if (vm.lineupEnabled.value == true && isLineupAttached) {
+                genericStream.getGlInterface().removeFilter(lineupFilter)
+                isLineupAttached = false
+            }
+            // ¡Y también con Cover!
+            if (vm.coverEnabled.value == true && isCoverAttached) {
+                genericStream.getGlInterface().removeFilter(coverFilter)
+                isCoverAttached = false
             }
             parentFragmentManager.beginTransaction()
                 .replace(R.id.overlays_container, OverlaysSettingsFragment())
@@ -579,6 +704,56 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
         }
     }
 
+    private fun attachCoverOverlay() {
+        lifecycleScope.launch {
+            val item = vm.covers.value!!.first { it.name == vm.selectedCover.value }
+            val baseBmp = withContext(Dispatchers.IO) { URL(item.build["cover"]!!).downloadBitmap() }
+            val team1   = vm.teams.value!!.first { it.name == vm.selectedTeam1.value }
+            val team2   = vm.teams.value!!.first { it.name == vm.selectedTeam2.value }
+            val logo1   = async(Dispatchers.IO){ URL(team1.logoUrl!!).downloadBitmap() }.await()
+            val logo2   = async(Dispatchers.IO){ URL(team2.logoUrl!!).downloadBitmap() }.await()
+
+            // 1) Composición
+            val composite = CoverOverlayGenerator.createCompositeBitmap(
+                base      = baseBmp,
+                logo1     = logo1,
+                logo2     = logo2,
+                label     = coverLabel,
+                teamName1 = team1.name,
+                teamName2 = team2.name
+            )
+
+            // 2) En UI: setImage, escala y addFilter
+            withContext(Dispatchers.Main) {
+                coverFilter.setImage(composite)
+                applyCoverScaleAndPosition(composite)
+                genericStream.getGlInterface().addFilter(coverFilter)
+                isCoverAttached = true
+            }
+        }
+    }
+
+    private fun applyCoverScaleAndPosition(bmp: Bitmap) {
+        // Copiado de applyScaleAndPosition (Lineup/Scoreboard)
+        val metrics    = resources.displayMetrics
+        val sw         = metrics.widthPixels.toFloat()
+        val sh         = metrics.heightPixels.toFloat()
+        val isLandscape = resources.configuration.orientation ==
+                Configuration.ORIENTATION_LANDSCAPE
+
+        val baseScaleX = bmp.width / sw * 100f
+        val scaleX     = if (isLandscape) baseScaleX + 20f else baseScaleX - 10f
+        val scaleY     = if (isLandscape)
+            bmp.height / sh * 100f + 20f
+        else
+            bmp.height / sh * 100f - 1f
+        val posX       = (100f - scaleX) / 2f
+        val posY       = (100f - scaleY) / 2f
+
+        coverFilter.setScale(scaleX, scaleY)
+        coverFilter.setPosition(posX, posY)
+    }
+
     private fun <T> asyncIO(block: suspend ()->T) =
         lifecycleScope.async(Dispatchers.IO) { block() }
     private fun URL.downloadBitmap() =
@@ -587,15 +762,16 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
     private fun updateOverlaysToggle() {
         val hasScore  = vm.selectedScoreboard.value?.isNotBlank() == true
         val hasLineup = vm.selectedLineup.value  ?.isNotBlank() == true
-        val showToggle = hasScore || hasLineup
+        val hasCover  = vm.selectedCover.value   ?.isNotBlank() == true
 
+        val showToggle = hasScore || hasLineup || hasCover
         btnOverlaysToggle.visibility = if (showToggle) View.VISIBLE else View.GONE
 
         if (!showToggle) {
-            // si ya no hay nada configurado, colapsamos submenú y desactivamos
             submenuOverlays.visibility = View.GONE
             vm.setScoreboardEnabled(false)
             vm.setLineupEnabled(false)
+            vm.setCoverEnabled(false)
         }
     }
 }
