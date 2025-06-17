@@ -83,6 +83,7 @@
 
             <!-- Scoreboard Overlay -->
             <FrameLayout
+                android:id="@+id/frameScoreboardOverlay"
                 android:layout_width="56dp"
                 android:layout_height="56dp"
                 android:layout_marginBottom="8dp">
@@ -110,6 +111,7 @@
 
             <!-- Lineup Overlay -->
             <FrameLayout
+                android:id="@+id/frameLineupOverlay"
                 android:layout_width="56dp"
                 android:layout_height="56dp"
                 android:layout_marginBottom="8dp">

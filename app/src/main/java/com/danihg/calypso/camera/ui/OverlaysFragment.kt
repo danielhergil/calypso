@@ -75,6 +75,8 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
         btnOverlaysToggle    = view.findViewById(R.id.btnOverlaysToggle)
         btnLineupOverlay     = view.findViewById(R.id.btnLineupOverlay)
         spinnerLineup        = view.findViewById(R.id.spinnerLineup)
+        val frameSB          = view.findViewById<FrameLayout>(R.id.frameScoreboardOverlay)
+        val frameLU          = view.findViewById<FrameLayout>(R.id.frameLineupOverlay)
 
         submenuOverlays.visibility = View.GONE
 
@@ -117,10 +119,16 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
             scoreContainer.layoutParams = lp
         }
 
-        vm.selectedLineup.observe(viewLifecycleOwner) { name ->
+//        vm.selectedLineup.observe(viewLifecycleOwner) { name ->
+//            val has = name.isNotBlank()
+//            btnLineupOverlay.visibility = if (has) View.VISIBLE else View.GONE
+//            if (!has) vm.setLineupEnabled(false)
+//        }
+        vm.selectedLineup.observe(viewLifecycleOwner)  { name ->
             val has = name.isNotBlank()
             btnLineupOverlay.visibility = if (has) View.VISIBLE else View.GONE
             if (!has) vm.setLineupEnabled(false)
+            updateOverlaysToggle()
         }
 
         vm.lineupEnabled.observe(viewLifecycleOwner) { enabled ->
@@ -144,35 +152,50 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
         }
 
         btnLineupOverlay.setOnClickListener {
-            btnLineupOverlay.isEnabled = false
-            btnLineupOverlay.icon = null
-            btnLineupOverlay.visibility = View.GONE
-            spinnerLineup.visibility = View.VISIBLE
+            btnScoreboardOverlay.isEnabled = false
+            btnLineupOverlay.isEnabled     = false
+            btnScoreboardOverlay.icon = null
+            btnLineupOverlay.icon     = null
+
+            btnScoreboardOverlay.visibility = View.GONE
+            btnLineupOverlay.visibility     = View.GONE
+            spinnerScoreboard.visibility    = View.VISIBLE
+            spinnerLineup.visibility        = View.VISIBLE
 
             vm.setLineupEnabled(!(vm.lineupEnabled.value ?: false))
 
             viewLifecycleOwner.lifecycleScope.launch {
-                delay(2000)
-                spinnerLineup.visibility = View.GONE
-                btnLineupOverlay.visibility = View.VISIBLE
-                btnLineupOverlay.isEnabled = true
+                delay(3000)
+                spinnerScoreboard.visibility = View.GONE
+                spinnerLineup.visibility     = View.GONE
+
+                btnScoreboardOverlay.icon = ContextCompat.getDrawable(
+                    requireContext(), R.drawable.ic_scoreboard_overlay
+                )
+                btnLineupOverlay.icon = ContextCompat.getDrawable(
+                    requireContext(), R.drawable.ic_lineup_overlay
+                )
+
+                btnScoreboardOverlay.visibility = View.VISIBLE
+                btnLineupOverlay.visibility     = View.VISIBLE
+
+                btnScoreboardOverlay.isEnabled = true
+                btnLineupOverlay.isEnabled     = true
             }
         }
 
         // 1) Mostrar/ocultar toggle según haya scoreboard configurado
-        vm.selectedScoreboard.observe(viewLifecycleOwner) { name ->
-//            val ok = name.isNotBlank()
-//            btnScoreboardOverlay.visibility = if (ok) View.VISIBLE else View.GONE
-//            if (!ok) vm.setScoreboardEnabled(false)
-            val hasOverlay = name.isNotBlank()
-            btnOverlaysToggle.visibility = if (hasOverlay) View.VISIBLE else View.GONE
-
-            if (!hasOverlay) {
-                // Si se quita la configuración, colapsamos el submenú y desactivamos el scoreboard
-                submenuOverlays.visibility = View.GONE
-                vm.setScoreboardEnabled(false)
-            }
-        }
+//        vm.selectedScoreboard.observe(viewLifecycleOwner) { name ->
+//            val hasOverlay = name.isNotBlank()
+//            btnOverlaysToggle.visibility = if (hasOverlay) View.VISIBLE else View.GONE
+//
+//            if (!hasOverlay) {
+//                // Si se quita la configuración, colapsamos el submenú y desactivamos el scoreboard
+//                submenuOverlays.visibility = View.GONE
+//                vm.setScoreboardEnabled(false)
+//            }
+//        }
+        vm.selectedScoreboard.observe(viewLifecycleOwner) { updateOverlaysToggle() }
 
         // 2) Estado checked + aplicar/quitar filtro
         vm.scoreboardEnabled.observe(viewLifecycleOwner) { enabled ->
@@ -215,33 +238,50 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
 //            }
 //        }
         btnOverlaysToggle.setOnClickListener {
-            // Alternamos el submenú de overlays
-            val expanded = submenuOverlays.isVisible
-            submenuOverlays.visibility = if (expanded) View.GONE else View.VISIBLE
+            if (submenuOverlays.isVisible) {
+                submenuOverlays.visibility = View.GONE
+            } else {
+                // Actualizo visibilidad de cada FrameLayout dentro del submenu
+                frameLU.visibility      = if (vm.selectedLineup.value?.isNotBlank() == true) View.VISIBLE else View.GONE
+                frameSB.visibility = if (vm.selectedScoreboard.value?.isNotBlank() == true) View.VISIBLE else View.GONE
+
+                // Finalmente abro el submenú sólo si hay al menos uno
+                submenuOverlays.visibility = if (frameLU.isVisible || frameSB.isVisible) View.VISIBLE else View.GONE
+            }
         }
 
         // 3) Toggle al click
         btnScoreboardOverlay.setOnClickListener {
             // Desactiva el botón y muestra el spinner
             btnScoreboardOverlay.isEnabled = false
+            btnLineupOverlay.isEnabled     = false
             btnScoreboardOverlay.icon = null
+            btnLineupOverlay.icon     = null
             btnScoreboardOverlay.visibility = View.GONE
-            spinnerScoreboard.visibility = View.VISIBLE
+            btnLineupOverlay.visibility     = View.GONE
+            spinnerScoreboard.visibility    = View.VISIBLE
+            spinnerLineup.visibility        = View.VISIBLE
 
             // Cambia el estado en el ViewModel
             vm.setScoreboardEnabled(!(vm.scoreboardEnabled.value ?: false))
 
             // Espera 2 segundos antes de restaurar el botón
             viewLifecycleOwner.lifecycleScope.launch {
-                kotlinx.coroutines.delay(2000) // 2000 ms = 2 segundos
+                delay(3000)
 
                 // Restaurar estado del botón
-                btnScoreboardOverlay.isEnabled = true
                 btnScoreboardOverlay.icon = ContextCompat.getDrawable(
                     requireContext(), R.drawable.ic_scoreboard_overlay
                 )
+                btnLineupOverlay.icon = ContextCompat.getDrawable(
+                    requireContext(), R.drawable.ic_lineup_overlay
+                )
                 spinnerScoreboard.visibility = View.GONE
+                spinnerLineup.visibility     = View.GONE
                 btnScoreboardOverlay.visibility = View.VISIBLE
+                btnLineupOverlay.visibility     = View.VISIBLE
+                btnScoreboardOverlay.isEnabled = true
+                btnLineupOverlay.isEnabled     = true
             }
         }
 
@@ -487,9 +527,22 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
             val sw = resources.displayMetrics.widthPixels.toFloat()
             val sh = resources.displayMetrics.heightPixels.toFloat()
 
+            val isLandscape = resources.configuration.orientation ==
+                    Configuration.ORIENTATION_LANDSCAPE
+
+
+            val baseScaleX = composite.width / sw * 100f
             // Escala respecto al tamaño real del composite
-            val scaleX = composite.width  / sw * 100f - 30f
-            val scaleY = composite.height / sh * 100f - 1f
+            val scaleX = if (isLandscape) {
+                baseScaleX - 10f  // menos “recorte” => más grande
+            } else {
+                baseScaleX - 30f
+            }
+            val scaleY = if (isLandscape) {
+                composite.height / sh * 100f - 2f
+            } else {
+                composite.height / sh * 100f - 1f
+            }
 
             // Lo centramos horizontal y verticalmente
             val posX = (100f - scaleX) / 2f
@@ -530,4 +583,19 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
         lifecycleScope.async(Dispatchers.IO) { block() }
     private fun URL.downloadBitmap() =
         openStream().use { BitmapFactory.decodeStream(it) }!!
+
+    private fun updateOverlaysToggle() {
+        val hasScore  = vm.selectedScoreboard.value?.isNotBlank() == true
+        val hasLineup = vm.selectedLineup.value  ?.isNotBlank() == true
+        val showToggle = hasScore || hasLineup
+
+        btnOverlaysToggle.visibility = if (showToggle) View.VISIBLE else View.GONE
+
+        if (!showToggle) {
+            // si ya no hay nada configurado, colapsamos submenú y desactivamos
+            submenuOverlays.visibility = View.GONE
+            vm.setScoreboardEnabled(false)
+            vm.setLineupEnabled(false)
+        }
+    }
 }
