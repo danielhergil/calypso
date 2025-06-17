@@ -534,7 +534,7 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
             val baseScaleX = composite.width / sw * 100f
             // Escala respecto al tamaño real del composite
             val scaleX = if (isLandscape) {
-                baseScaleX - 10f  // menos “recorte” => más grande
+                baseScaleX - 5f  // menos “recorte” => más grande
             } else {
                 baseScaleX - 30f
             }
