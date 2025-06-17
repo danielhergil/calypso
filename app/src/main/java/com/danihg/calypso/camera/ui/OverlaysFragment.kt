@@ -20,6 +20,7 @@ import androidx.lifecycle.lifecycleScope
 import com.danihg.calypso.R
 import com.danihg.calypso.camera.models.CameraViewModel
 import com.danihg.calypso.camera.models.OverlaysSettingsViewModel
+import com.danihg.calypso.overlays.filter.LineupOverlayGenerator
 import com.google.android.material.button.MaterialButton
 import com.pedro.encoder.input.gl.render.filters.`object`.ImageObjectFilterRender
 import kotlinx.coroutines.Dispatchers
@@ -55,7 +56,7 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
     // flags & counters
     private var isScoreboardAttached = false
 
-    private var snapshotBmpLineup: Bitmap? = null
+    private var compositeLineupBmp: Bitmap? = null
     private var isLineupAttached = false
 
     private lateinit var submenuOverlays: LinearLayout
@@ -132,10 +133,13 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
                 ColorStateList.valueOf(if (enabled) Color.BLACK else Color.WHITE)
 
             if (enabled) {
-                // adjuntar filtro con lineupFilter + snapshotBmpLineup...
-                // (idéntico a attachSnapshotOverlay, usando URL de full)
-            } else {
-//                genericStream.getGlInterface().removeFilter(lineupFilter)
+                // si ya tenemos el composite, hacemos re‐attach, si no, attach nuevo
+                if (compositeLineupBmp != null) reattachLineupFilter()
+                else attachLineupOverlay()
+            } else if (isLineupAttached) {
+                // solo quitamos si antes lo añadimos
+                genericStream.getGlInterface().removeFilter(lineupFilter)
+                isLineupAttached = false
             }
         }
 
@@ -410,4 +414,120 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
     private data class Quad<A, B, C, D>(
         val first: A, val second: B, val third: C, val fourth: D
     )
+
+    private fun attachLineupOverlay() {
+        lifecycleScope.launch {
+            // 1) Obtenemos el LineupItem
+            val item = vm.lineups.value
+                ?.firstOrNull { it.name == vm.selectedLineup.value }
+                ?: return@launch
+
+            // 2) Sacamos las URLs como non-null (o salimos si faltan)
+            val urlPlayers1 = item.build["players1"] ?: return@launch
+            val urlPlayers2 = item.build["players2"] ?: return@launch
+            val urlTeam1 = item.build["team1"] ?: return@launch
+            val urlTeam2 = item.build["team2"] ?: return@launch
+
+            // 3) Descargamos los bitmaps en IO
+            val grid1Deferred = async(Dispatchers.IO) { URL(urlPlayers1).downloadBitmap() }
+            val grid2Deferred = async(Dispatchers.IO) { URL(urlPlayers2).downloadBitmap() }
+
+            val team1BmpDeferred = async(Dispatchers.IO) { URL(urlTeam1).downloadBitmap() }
+            val team2BmpDeferred = async(Dispatchers.IO) { URL(urlTeam2).downloadBitmap() }
+
+            // 4) Cabecera: extraemos equipos seleccionados
+            val team1 = vm.teams.value!!.first { it.name == vm.selectedTeam1.value }
+            val team2 = vm.teams.value!!.first { it.name == vm.selectedTeam2.value }
+            val urlLogo1 = team1.logoUrl ?: return@launch
+            val urlLogo2 = team2.logoUrl ?: return@launch
+            val logo1Deferred = async(Dispatchers.IO) { URL(urlLogo1).downloadBitmap() }
+            val logo2Deferred = async(Dispatchers.IO) { URL(urlLogo2).downloadBitmap() }
+
+            val bmpTeam1 = team1BmpDeferred.await()
+            val bmpTeam2 = team2BmpDeferred.await()
+
+            // 5) Esperamos a tener todos los bitmaps
+            val grid1  = grid1Deferred.await()
+            val grid2  = grid2Deferred.await()
+            val logo1  = logo1Deferred.await()
+            val logo2  = logo2Deferred.await()
+
+            // 6) Creamos el composite
+            val bmp = LineupOverlayGenerator.createCompositeBitmap(
+                imgTeam1 = bmpTeam1,
+                imgTeam2 = bmpTeam2,
+                logo1    = logo1,
+                logo2    = logo2,
+                teamName1 = team1.name,
+                teamName2 = team2.name,
+                gridCell1  = grid1,
+                gridCell2  = grid2,
+                players1   = team1.players,
+                players2   = team2.players,
+            )
+            compositeLineupBmp = bmp
+
+            // 7) Aplicamos filtro
+            LineupOverlayGenerator.updateOverlay(
+                imgTeam1   = bmpTeam1,
+                imgTeam2   = bmpTeam2,
+                logo1      = logo1,
+                logo2      = logo2,
+                teamName1  = team1.name,
+                teamName2  = team2.name,
+                gridCell1  = grid1,
+                gridCell2  = grid2,
+                players1   = team1.players,
+                players2   = team2.players,
+                filter     = lineupFilter
+            )
+            // En lugar de usar bmpTeam1/bmpTeam2, usa el composite
+            val composite = compositeLineupBmp ?: return@launch
+
+            val sw = resources.displayMetrics.widthPixels.toFloat()
+            val sh = resources.displayMetrics.heightPixels.toFloat()
+
+            // Escala respecto al tamaño real del composite
+            val scaleX = composite.width  / sw * 100f - 30f
+            val scaleY = composite.height / sh * 100f - 1f
+
+            // Lo centramos horizontal y verticalmente
+            val posX = (100f - scaleX) / 2f
+            val posY = (100f - scaleY) / 5f
+            lineupFilter.setScale(scaleX, scaleY)
+            lineupFilter.setPosition(posX, posY)
+            genericStream.getGlInterface().addFilter(lineupFilter)
+            isLineupAttached = true
+        }
+    }
+
+
+    private fun reattachLineupFilter() {
+        compositeLineupBmp?.let {
+            // 1) Volvemos a componer/hacer update (en UI thread) igual que en attach
+            LineupOverlayGenerator.updateOverlay(
+                imgTeam1 = it,   // aquí guardamos composite en lugar de zonas
+                imgTeam2 = null, // ya no usamos esto; podrías sobrecargar updateOverlay si quieres
+                logo1    = null,
+                logo2    = null,
+                teamName1 = "",
+                teamName2 = "",
+                gridCell1  = null,
+                gridCell2  = null,
+                players1   = emptyList(),
+                players2   = emptyList(),
+                filter   = lineupFilter
+            )
+            // 2) Solo volvemos a añadir si no estaba
+            if (!isLineupAttached) {
+                genericStream.getGlInterface().addFilter(lineupFilter)
+                isLineupAttached = true
+            }
+        }
+    }
+
+    private fun <T> asyncIO(block: suspend ()->T) =
+        lifecycleScope.async(Dispatchers.IO) { block() }
+    private fun URL.downloadBitmap() =
+        openStream().use { BitmapFactory.decodeStream(it) }!!
 }

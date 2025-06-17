@@ -38,7 +38,8 @@ data class ScoreboardItem(
 data class LineupItem(
     val id: String = "",
     val name: String = "",
-    val snapshots: Map<String, String> = emptyMap()
+    val snapshots: Map<String, String> = emptyMap(),
+    val build: Map<String, String> = emptyMap()
 )
 
 class OverlaysSettingsViewModel(
@@ -165,10 +166,11 @@ class OverlaysSettingsViewModel(
                 val players = rawPlayers
                     ?.mapNotNull { item ->
                         (item as? Map<*, *>)?.let { m ->
-                            // extraemos de forma segura cada campo
-                            val pname  = m["name"]   as? String ?: ""
-                            val pnum   = (m["number"] as? Number)?.toInt() ?: 0
-                            val pgoals = (m["goals"]  as? Number)?.toInt() ?: 0
+                            val pname  = (m["playerName"] as? String)
+                                ?: (m["name"]       as? String)
+                                ?: ""
+                            val pnum   = (m["number"]     as? Number)?.toInt() ?: 0
+                            val pgoals = (m["goals"]      as? Number)?.toInt() ?: 0
                             Player(pname, pnum, pgoals)
                         }
                     }
@@ -212,7 +214,24 @@ class OverlaysSettingsViewModel(
                     }
                     ?.toMap()
                     ?: emptyMap()
-                LineupItem(id = doc.id, name = name, snapshots = snaps)
+                val rawBuild = doc.get("build") as? Map<*, *>
+                val buildMap = rawBuild
+                    ?.entries
+                    ?.mapNotNull { (k, v) ->
+                        (k as? String)?.let { key ->
+                            (v as? String)?.let { url ->
+                                key to url
+                            }
+                        }
+                    }
+                    ?.toMap()
+                    ?: emptyMap()
+                LineupItem(
+                    id        = doc.id,
+                    name      = name,
+                    snapshots = snaps,
+                    build     = buildMap
+                )
             }
             _lineups.postValue(list)
         } catch (e: Exception) {
