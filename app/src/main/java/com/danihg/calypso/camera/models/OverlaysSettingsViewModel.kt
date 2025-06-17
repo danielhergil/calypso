@@ -35,6 +35,13 @@ data class ScoreboardItem(
     val snapshots: Map<String,String> = emptyMap()
 )
 
+data class LineupItem(
+    val id: String = "",
+    val name: String = "",
+    val snapshots: Map<String, String> = emptyMap(),
+    val build: Map<String, String> = emptyMap()
+)
+
 class OverlaysSettingsViewModel(
     private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
@@ -47,6 +54,9 @@ class OverlaysSettingsViewModel(
     private val _scoreboards = MutableLiveData<List<ScoreboardItem>>(emptyList())
     val scoreboards: LiveData<List<ScoreboardItem>> = _scoreboards
 
+    private val _lineups = MutableLiveData<List<LineupItem>>(emptyList())
+    val lineups: LiveData<List<LineupItem>> = _lineups
+
     companion object {
         private const val TAG        = "OverlaysVM"
         private const val KEY_TEAM1  = "key_team1"
@@ -54,6 +64,8 @@ class OverlaysSettingsViewModel(
         private const val KEY_SCOREBOARD_NAME = "key_scoreboard_name"
         private const val KEY_SHOW_LOGOS      = "key_show_logos"
         private const val KEY_SCOREBOARD_ENABLED = "key_scoreboard_enabled"
+        private const val KEY_LINEUP_NAME    = "key_lineup_name"
+        private const val KEY_LINEUP_ENABLED = "key_lineup_enabled"
         private const val KEY_SCORE1 = "key_score1"
         private const val KEY_SCORE2 = "key_score2"
     }
@@ -68,11 +80,16 @@ class OverlaysSettingsViewModel(
         .getLiveData(KEY_SCOREBOARD_ENABLED, false)
     val score1 = savedStateHandle.getLiveData(KEY_SCORE1, 0)
     val score2 = savedStateHandle.getLiveData(KEY_SCORE2, 0)
+    val selectedLineup: MutableLiveData<String> =
+        savedStateHandle.getLiveData(KEY_LINEUP_NAME, "")
+    val lineupEnabled: MutableLiveData<Boolean> =
+        savedStateHandle.getLiveData(KEY_LINEUP_ENABLED, false)
 
     init {
         viewModelScope.launch {
             fetchUserTeams()
             fetchScoreboardItems()
+            fetchLineupItems()
         }
     }
 
@@ -149,10 +166,11 @@ class OverlaysSettingsViewModel(
                 val players = rawPlayers
                     ?.mapNotNull { item ->
                         (item as? Map<*, *>)?.let { m ->
-                            // extraemos de forma segura cada campo
-                            val pname  = m["name"]   as? String ?: ""
-                            val pnum   = (m["number"] as? Number)?.toInt() ?: 0
-                            val pgoals = (m["goals"]  as? Number)?.toInt() ?: 0
+                            val pname  = (m["playerName"] as? String)
+                                ?: (m["name"]       as? String)
+                                ?: ""
+                            val pnum   = (m["number"]     as? Number)?.toInt() ?: 0
+                            val pgoals = (m["goals"]      as? Number)?.toInt() ?: 0
                             Player(pname, pnum, pgoals)
                         }
                     }
@@ -176,6 +194,52 @@ class OverlaysSettingsViewModel(
         }
     }
 
+    private suspend fun fetchLineupItems() {
+        try {
+            val snap = db.collection("lineup")
+                .get()
+                .await()
+
+            val list = snap.documents.mapNotNull { doc ->
+                val name = doc.getString("name") ?: return@mapNotNull null
+                val raw  = doc.get("snapshots") as? Map<*, *>
+                val snaps = raw
+                    ?.entries
+                    ?.mapNotNull { (k, v) ->
+                        (k as? String)?.let { key ->
+                            (v as? String)?.let { url ->
+                                key to url
+                            }
+                        }
+                    }
+                    ?.toMap()
+                    ?: emptyMap()
+                val rawBuild = doc.get("build") as? Map<*, *>
+                val buildMap = rawBuild
+                    ?.entries
+                    ?.mapNotNull { (k, v) ->
+                        (k as? String)?.let { key ->
+                            (v as? String)?.let { url ->
+                                key to url
+                            }
+                        }
+                    }
+                    ?.toMap()
+                    ?: emptyMap()
+                LineupItem(
+                    id        = doc.id,
+                    name      = name,
+                    snapshots = snaps,
+                    build     = buildMap
+                )
+            }
+            _lineups.postValue(list)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error fetching lineup items", e)
+            _lineups.postValue(emptyList())
+        }
+    }
+
     // Métodos para actualizar la selección y que quede guardada
     fun setTeam1(alias: String) {
         savedStateHandle[KEY_TEAM1] = alias
@@ -191,5 +255,11 @@ class OverlaysSettingsViewModel(
     }
     fun setScore2(value: Int) {
         savedStateHandle[KEY_SCORE2] = value
+    }
+    fun setLineup(name: String) {
+        savedStateHandle[KEY_LINEUP_NAME] = name
+    }
+    fun setLineupEnabled(enabled: Boolean) {
+        savedStateHandle[KEY_LINEUP_ENABLED] = enabled
     }
 }

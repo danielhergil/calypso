@@ -8,6 +8,7 @@ import android.widget.CheckBox
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
+import androidx.core.view.isVisible
 import androidx.core.widget.doOnTextChanged
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -44,26 +45,40 @@ class OverlaysSettingsFragment : Fragment(R.layout.fragment_overlays_settings) {
     private lateinit var progressScore: ProgressBar
     private lateinit var cbShowLogos: CheckBox
 
+    // Lineup
+    private lateinit var headerLineup: LinearLayout
+    private lateinit var bodyLineup:   LinearLayout
+    private lateinit var ivLineupArrow: ImageView
+    private lateinit var actLineup:       AutoCompleteTextView
+    private lateinit var ivLineupSnapshot: ImageView
+    private lateinit var progressLineup:    ProgressBar
+
     private lateinit var btnSave: MaterialButton
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
         // ==== Teams init ====
-        btnClose      = view.findViewById(R.id.btnCloseOverlaysSettings)
-        headerTeams   = view.findViewById(R.id.header_teams)
-        bodyTeams     = view.findViewById(R.id.body_teams)
-        ivTeamsArrow  = view.findViewById(R.id.iv_teams_arrow)
-        actTeam1      = view.findViewById(R.id.act_team1)
-        actTeam2      = view.findViewById(R.id.act_team2)
-        ivTeam1Logo   = view.findViewById(R.id.iv_team1_logo)
-        ivTeam2Logo   = view.findViewById(R.id.iv_team2_logo)
-        progress1     = view.findViewById(R.id.progress_team1)
-        progress2     = view.findViewById(R.id.progress_team2)
+        btnClose           = view.findViewById(R.id.btnCloseOverlaysSettings)
+        headerTeams        = view.findViewById(R.id.header_teams)
+        bodyTeams          = view.findViewById(R.id.body_teams)
+        ivTeamsArrow       = view.findViewById(R.id.iv_teams_arrow)
+        actTeam1           = view.findViewById(R.id.act_team1)
+        actTeam2           = view.findViewById(R.id.act_team2)
+        ivTeam1Logo        = view.findViewById(R.id.iv_team1_logo)
+        ivTeam2Logo        = view.findViewById(R.id.iv_team2_logo)
+        progress1          = view.findViewById(R.id.progress_team1)
+        progress2          = view.findViewById(R.id.progress_team2)
+        headerLineup       = view.findViewById(R.id.header_lineup)
+        bodyLineup         = view.findViewById(R.id.body_lineup)
+        ivLineupArrow      = view.findViewById(R.id.iv_lineup_arrow)
+        actLineup          = view.findViewById(R.id.act_lineup)
+        ivLineupSnapshot   = view.findViewById(R.id.iv_lineup_snapshot)
+        progressLineup     = view.findViewById(R.id.progress_lineup)
 
         btnClose.setOnClickListener { parentFragmentManager.popBackStack() }
         headerTeams.setOnClickListener {
-            val open = bodyTeams.visibility == View.VISIBLE
+            val open = bodyTeams.isVisible
             bodyTeams.visibility = if (open) View.GONE else View.VISIBLE
             ivTeamsArrow.rotation = if (open) 0f else 180f
         }
@@ -156,7 +171,32 @@ class OverlaysSettingsFragment : Fragment(R.layout.fragment_overlays_settings) {
             vm.setScore1(0)
             vm.setScore2(0)
             vm.setShowLogos(cbShowLogos.isChecked)
+            vm.setLineupEnabled(false)
             parentFragmentManager.popBackStack()
+        }
+
+        headerLineup.setOnClickListener {
+            val open = bodyLineup.visibility == View.VISIBLE
+            bodyLineup.visibility = if (open) View.GONE else View.VISIBLE
+            ivLineupArrow.rotation = if (open) 0f else 180f
+        }
+        vm.lineups.observe(viewLifecycleOwner) { list ->
+            val names  = list.map { it.name }
+            val adapter = ArrayAdapter(requireContext(),
+                android.R.layout.simple_list_item_1,
+                names)
+            actLineup.setAdapter(adapter)
+        }
+        vm.selectedLineup.value
+            ?.takeIf(String::isNotBlank)
+            ?.let { name ->
+                actLineup.setText(name, false)
+                loadLineupSnapshot(name)
+            }
+        actLineup.setOnItemClickListener { _, _, pos, _ ->
+            val name = actLineup.adapter.getItem(pos) as String
+            vm.setLineup(name)
+            loadLineupSnapshot(name)
         }
     }
 
@@ -260,6 +300,37 @@ class OverlaysSettingsFragment : Fragment(R.layout.fragment_overlays_settings) {
                     onError = { _, _ ->
                         progressScore.visibility = View.GONE
                         ivScoreLogo.visibility = View.VISIBLE
+                    }
+                )
+            }
+        }
+    }
+
+    private fun loadLineupSnapshot(name: String) {
+        val item = vm.lineups.value?.firstOrNull { it.name == name }
+        val url  = item?.snapshots?.get("full")
+
+        if (url.isNullOrBlank()) {
+            progressLineup.visibility = View.GONE
+            ivLineupSnapshot.setImageResource(R.drawable.ic_image_placeholder)
+            ivLineupSnapshot.visibility = View.VISIBLE
+        } else {
+            ivLineupSnapshot.visibility = View.INVISIBLE
+            progressLineup.visibility = View.VISIBLE
+            ivLineupSnapshot.load(url) {
+                placeholder(null); error(R.drawable.ic_image_placeholder)
+                listener(
+                    onStart = {
+                        progressLineup.visibility = View.VISIBLE
+                        ivLineupSnapshot.visibility = View.INVISIBLE
+                    },
+                    onSuccess = { _, _ ->
+                        progressLineup.visibility = View.GONE
+                        ivLineupSnapshot.visibility = View.VISIBLE
+                    },
+                    onError = { _, _ ->
+                        progressLineup.visibility = View.GONE
+                        ivLineupSnapshot.visibility = View.VISIBLE
                     }
                 )
             }
