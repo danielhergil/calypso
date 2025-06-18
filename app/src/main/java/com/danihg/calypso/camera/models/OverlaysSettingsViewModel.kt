@@ -42,6 +42,13 @@ data class LineupItem(
     val build: Map<String, String> = emptyMap()
 )
 
+data class CoverItem(
+    val id: String = "",
+    val name: String = "",
+    val snapshots: Map<String, String> = emptyMap(),
+    val build: Map<String, String>     = emptyMap()
+)
+
 class OverlaysSettingsViewModel(
     private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
@@ -57,6 +64,9 @@ class OverlaysSettingsViewModel(
     private val _lineups = MutableLiveData<List<LineupItem>>(emptyList())
     val lineups: LiveData<List<LineupItem>> = _lineups
 
+    private val _covers = MutableLiveData<List<CoverItem>>(emptyList())
+    val covers: LiveData<List<CoverItem>> = _covers
+
     companion object {
         private const val TAG        = "OverlaysVM"
         private const val KEY_TEAM1  = "key_team1"
@@ -66,6 +76,9 @@ class OverlaysSettingsViewModel(
         private const val KEY_SCOREBOARD_ENABLED = "key_scoreboard_enabled"
         private const val KEY_LINEUP_NAME    = "key_lineup_name"
         private const val KEY_LINEUP_ENABLED = "key_lineup_enabled"
+        private const val KEY_COVER_NAME    = "key_cover_name"
+        private const val KEY_COVER_ENABLED = "key_cover_enabled"
+        private const val KEY_COVER_LABEL     = "key_cover_label"
         private const val KEY_SCORE1 = "key_score1"
         private const val KEY_SCORE2 = "key_score2"
     }
@@ -84,12 +97,19 @@ class OverlaysSettingsViewModel(
         savedStateHandle.getLiveData(KEY_LINEUP_NAME, "")
     val lineupEnabled: MutableLiveData<Boolean> =
         savedStateHandle.getLiveData(KEY_LINEUP_ENABLED, false)
+    val selectedCover: MutableLiveData<String> =
+        savedStateHandle.getLiveData(KEY_COVER_NAME, "")
+    val coverEnabled: MutableLiveData<Boolean> =
+        savedStateHandle.getLiveData(KEY_COVER_ENABLED, false)
+    val selectedCoverLabel: MutableLiveData<String> =
+        savedStateHandle.getLiveData(KEY_COVER_LABEL, "")
 
     init {
         viewModelScope.launch {
             fetchUserTeams()
             fetchScoreboardItems()
             fetchLineupItems()
+            fetchCoverItems()
         }
     }
 
@@ -240,6 +260,43 @@ class OverlaysSettingsViewModel(
         }
     }
 
+    private suspend fun fetchCoverItems() {
+        try {
+            val snap = db.collection("cover")
+                .get()
+                .await()
+            val list = snap.documents.mapNotNull { doc ->
+                val name = doc.getString("name") ?: return@mapNotNull null
+                val rawSnap  = doc.get("snapshot") as? Map<*, *>
+                val rawBuild = doc.get("build")    as? Map<*, *>
+                val snaps = rawSnap
+                    ?.entries
+                    ?.mapNotNull { (k, v) ->
+                        (k as? String)?.let { key ->
+                            (v as? String)?.let { url ->
+                                key to url
+                            }
+                        }
+                    }
+                    ?.toMap()
+                    ?: emptyMap()
+                val builds = rawBuild
+                    ?.mapNotNull { (k, v) -> (k as? String)?.let { kk -> (v as? String)?.let { vv -> kk to vv }}}
+                    ?.toMap() ?: emptyMap()
+                CoverItem(
+                    id        = doc.id,
+                    name      = name,
+                    snapshots = snaps,
+                    build     = builds
+                )
+            }
+            _covers.postValue(list)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error fetching cover items", e)
+            _covers.postValue(emptyList())
+        }
+    }
+
     // Métodos para actualizar la selección y que quede guardada
     fun setTeam1(alias: String) {
         savedStateHandle[KEY_TEAM1] = alias
@@ -261,5 +318,14 @@ class OverlaysSettingsViewModel(
     }
     fun setLineupEnabled(enabled: Boolean) {
         savedStateHandle[KEY_LINEUP_ENABLED] = enabled
+    }
+    fun setCover(name: String) {
+        savedStateHandle[KEY_COVER_NAME] = name
+    }
+    fun setCoverEnabled(enabled: Boolean) {
+        savedStateHandle[KEY_COVER_ENABLED] = enabled
+    }
+    fun setCoverLabel(label: String) {
+        savedStateHandle[KEY_COVER_LABEL] = label
     }
 }

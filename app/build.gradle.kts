@@ -1,7 +1,11 @@
+val RELEASE_STORE_FILE: String by project
+val RELEASE_KEY_ALIAS: String by project
+val RELEASE_STORE_PASSWORD: String by project
+val RELEASE_KEY_PASSWORD: String by project
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
-    // removed: alias(libs.plugins.kotlin.compose)
     id("com.google.gms.google-services")
     id("com.google.firebase.crashlytics")
 }
@@ -14,28 +18,39 @@ android {
         applicationId = "com.danihg.calypso"
         minSdk = 24
         targetSdk = 35
-        versionCode = 1
+        versionCode = 2
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file(RELEASE_STORE_FILE)
+            storePassword = RELEASE_STORE_PASSWORD
+            keyAlias = RELEASE_KEY_ALIAS
+            keyPassword = RELEASE_KEY_PASSWORD
+        }
+    }
+
     buildTypes {
-        release {
+        getByName("release") {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
         }
 
-        create("debugRelease") {
+        create("releaseDebug") {
             initWith(getByName("release"))
-            isDebuggable = true
-            versionNameSuffix = "-debug"
-            signingConfig = signingConfigs.getByName("debug") // o "release" si tienes una clave real
+            isDebuggable = false
+            signingConfig = signingConfigs.getByName("release")
+            versionNameSuffix = "-dev"
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -49,42 +64,30 @@ android {
 }
 
 dependencies {
-    // Firebase
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
     implementation(libs.firebase.crashlytics)
     implementation("com.google.firebase:firebase-storage-ktx:21.0.2")
 
-    // Image Load
     implementation("io.coil-kt:coil:2.4.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-savedstate:2.9.1")
     implementation(libs.material)
 
-    // Google Play Services
     implementation(libs.play.services.auth)
-
-    // Root Encoder
     implementation(libs.rootencoder.library)
     implementation(libs.rootencoder.extra)
 
-    // Core
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
-
-    // AppCompat & Material
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
-
-    // Layouts
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.recyclerview)
 
-    // Navigation Component (if needed)
     implementation(libs.androidx.navigation.fragment.ktx)
     implementation(libs.androidx.navigation.ui.ktx)
 
-    // Lifecycle ViewModel & LiveData
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.lifecycle.livedata.ktx)
     implementation(libs.androidx.swiperefreshlayout)

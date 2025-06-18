@@ -89,6 +89,7 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
 
     private var prevScoreboardEnabled: Boolean? = null
     private var prevLineupEnabled: Boolean? = null
+    private var prevCoverEnabled: Boolean? = null
 
 
     @SuppressLint("ClickableViewAccessibility")
@@ -340,9 +341,11 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         btnSettingsStream.setOnClickListener {
             prevScoreboardEnabled = overlaysVm.scoreboardEnabled.value ?: false
             prevLineupEnabled     = overlaysVm.lineupEnabled.value    ?: false
+            prevCoverEnabled      = overlaysVm.coverEnabled.value     ?: false
 
             overlaysVm.setScoreboardEnabled(false)
             overlaysVm.setLineupEnabled(false)
+            overlaysVm.setCoverEnabled(false)
             if (genericStream.isStreaming || genericStream.isRecording) {
                 parentFragmentManager.beginTransaction()
                     .replace(R.id.settings_container, ActiveStreamSettingsFragment())
@@ -664,14 +667,16 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
     override fun onResume() {
         super.onResume()
         prevScoreboardEnabled?.let { wasEnabled ->
-            if (wasEnabled) {
-                overlaysVm.setScoreboardEnabled(true)
-            }
+            if (wasEnabled) overlaysVm.setScoreboardEnabled(true)
             prevScoreboardEnabled = null
         }
         prevLineupEnabled?.let { wasEnabled ->
             if (wasEnabled) overlaysVm.setLineupEnabled(true)
             prevLineupEnabled = null
+        }
+        prevCoverEnabled?.let { wasEnabled ->
+            if (wasEnabled) overlaysVm.setCoverEnabled(true)
+            prevCoverEnabled = null
         }
         requireActivity()
             .findViewById<FrameLayout>(R.id.overlays_container)
