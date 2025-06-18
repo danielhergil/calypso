@@ -48,7 +48,7 @@
         android:label="Login">
         <action
             android:id="@+id/action_login_to_home"
-            app:destination="@id/initialFragment"
+            app:destination="@id/homeFragment"
             app:popUpTo="@id/loginFragment"
             app:popUpToInclusive="true" />
 
