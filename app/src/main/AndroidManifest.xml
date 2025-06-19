@@ -35,9 +35,11 @@
             </intent-filter>
         </activity>
         <activity android:name=".camera.CameraActivity"
+            android:windowSoftInputMode="stateHidden|adjustResize"
             android:exported="false"
             android:theme="@style/Theme.Calypso.Fullscreen" />
         <activity android:name=".teams.AddTeamsActivity"
+            android:windowSoftInputMode="stateHidden|adjustResize"
             android:exported="false" />
         <service
             android:name=".services.CameraService"
