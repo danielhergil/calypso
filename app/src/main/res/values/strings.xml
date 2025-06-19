@@ -74,4 +74,10 @@
     <string name="item_team_card_add_player">Add Player</string>
     <string name="item_team_card_delete">Delete</string>
     <string name="item_team_card_save">Save</string>
+    <string name="home_settings">Settings</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_select_language">Select Language</string>
+    <string name="settings_delete_account">Delete Account</string>
+    <string name="settings_delete_account_btn">Delete Account</string>
+    <string name="settings_delete_account_confirm_message">Are you sure you want to delete your account?</string>
 </resources>

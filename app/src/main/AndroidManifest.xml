@@ -41,6 +41,11 @@
         <activity android:name=".teams.AddTeamsActivity"
             android:windowSoftInputMode="stateHidden|adjustResize"
             android:exported="false" />
+        <activity
+            android:name=".settings.SettingsActivity"
+            android:exported="false"
+            android:windowSoftInputMode="stateHidden|adjustResize"
+            android:label="@string/settings_language" />
         <service
             android:name=".services.CameraService"
             android:foregroundServiceType="camera|microphone"

@@ -8,6 +8,7 @@ import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import com.danihg.calypso.camera.CameraActivity
 import com.danihg.calypso.databinding.FragmentHomeBinding
+import com.danihg.calypso.settings.SettingsActivity
 import com.danihg.calypso.teams.AddTeamsActivity
 
 class HomeFragment : Fragment() {
@@ -32,6 +33,10 @@ class HomeFragment : Fragment() {
         binding.cardTeams.setOnClickListener {
             val intent = Intent(requireContext(), AddTeamsActivity::class.java)
             startActivity(intent)
+        }
+        binding.cardSettings?.setOnClickListener {
+            // Arranca la actividad de Settings
+            startActivity(Intent(requireContext(), SettingsActivity::class.java))
         }
     }
 
