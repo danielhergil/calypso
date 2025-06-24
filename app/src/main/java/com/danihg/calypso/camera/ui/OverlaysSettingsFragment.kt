@@ -19,6 +19,8 @@ import com.danihg.calypso.R
 import com.danihg.calypso.camera.models.CameraViewModel
 import com.danihg.calypso.camera.models.OverlaysSettingsViewModel
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.card.MaterialCardView
+import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.textfield.TextInputEditText
 
 class OverlaysSettingsFragment : Fragment(R.layout.fragment_overlays_settings) {
@@ -74,6 +76,10 @@ class OverlaysSettingsFragment : Fragment(R.layout.fragment_overlays_settings) {
     private lateinit var ivFooterSnapshot: ImageView
     private lateinit var progressFooter: ProgressBar
 
+    private lateinit var cardLineup: MaterialCardView
+    private lateinit var cardCover: MaterialCardView
+    private lateinit var cardFooter: MaterialCardView
+
     private lateinit var btnSave: MaterialButton
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -110,6 +116,13 @@ class OverlaysSettingsFragment : Fragment(R.layout.fragment_overlays_settings) {
         etFooterLabel      = view.findViewById(R.id.et_footer_label)
         ivFooterSnapshot   = view.findViewById(R.id.iv_footer_snapshot)
         progressFooter     = view.findViewById(R.id.progress_footer)
+
+        cardLineup = view.findViewById(R.id.card_lineup)
+        cardCover  = view.findViewById(R.id.card_cover)
+        cardFooter = view.findViewById(R.id.card_footer)
+
+        vm.selectedTeam1.observe(viewLifecycleOwner) { updateOverlayCardsState() }
+        vm.selectedTeam2.observe(viewLifecycleOwner) { updateOverlayCardsState() }
 
         btnClose.setOnClickListener { parentFragmentManager.popBackStack() }
         headerTeams.setOnClickListener {
@@ -211,6 +224,13 @@ class OverlaysSettingsFragment : Fragment(R.layout.fragment_overlays_settings) {
         }
 
         headerLineup.setOnClickListener {
+            if (!cardLineup.isEnabled) {
+                Snackbar.make(requireView(),
+                    "Choose both teams first to enable this overlay",
+                    Snackbar.LENGTH_SHORT)
+                    .show()
+                return@setOnClickListener
+            }
             val open = bodyLineup.visibility == View.VISIBLE
             bodyLineup.visibility = if (open) View.GONE else View.VISIBLE
             ivLineupArrow.rotation = if (open) 0f else 180f
@@ -235,6 +255,13 @@ class OverlaysSettingsFragment : Fragment(R.layout.fragment_overlays_settings) {
         }
 
         headerCover.setOnClickListener {
+            if (!cardCover.isEnabled) {
+                Snackbar.make(requireView(),
+                    "Choose both teams first to enable this overlay",
+                    Snackbar.LENGTH_SHORT)
+                    .show()
+                return@setOnClickListener
+            }
             val open = bodyCover.isVisible
             bodyCover.visibility = if (open) View.GONE else View.VISIBLE
             ivCoverArrow.rotation = if (open) 0f else 180f
@@ -277,6 +304,13 @@ class OverlaysSettingsFragment : Fragment(R.layout.fragment_overlays_settings) {
         })
 
         headerFooter.setOnClickListener {
+            if (!cardFooter.isEnabled) {
+                Snackbar.make(requireView(),
+                    "Choose both teams first to enable this overlay",
+                    Snackbar.LENGTH_SHORT)
+                    .show()
+                return@setOnClickListener
+            }
             val open = bodyFooter.isVisible
             bodyFooter.visibility   = if (open) View.GONE else View.VISIBLE
             ivFooterArrow.rotation  = if (open) 0f else 180f
@@ -513,6 +547,15 @@ class OverlaysSettingsFragment : Fragment(R.layout.fragment_overlays_settings) {
                     }
                 )
             }
+        }
+    }
+
+    fun updateOverlayCardsState() {
+        val enabled = vm.selectedTeam1.value.orEmpty().isNotBlank()
+                && vm.selectedTeam2.value.orEmpty().isNotBlank()
+        listOf(cardLineup, cardCover, cardFooter).forEach { card ->
+            card.isEnabled = enabled
+            card.alpha     = if (enabled) 1f else 0.5f
         }
     }
 }

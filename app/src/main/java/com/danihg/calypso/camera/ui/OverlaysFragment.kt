@@ -114,12 +114,12 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
             val bottomMarginPx = (parentH * 0.15f).toInt()
 
             // 2) calculamos cuánto “de más” tenemos respecto a 2069px
-            val extra = parentW - 2219f
+            val extra = parentW - 2069f
 
             // 3) si estamos en landscape y la pantalla es más ancha, desplazamos
             //    el contenedor la mitad del extra hacia la izquierda
             scoreContainer.translationX = if (isLandscape && extra > 0f) {
-                -extra / 2f
+                0f
             } else {
                 0f
             }
