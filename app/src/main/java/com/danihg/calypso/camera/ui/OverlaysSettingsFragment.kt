@@ -65,6 +65,15 @@ class OverlaysSettingsFragment : Fragment(R.layout.fragment_overlays_settings) {
     private lateinit var progressCover:    ProgressBar
     private lateinit var etCoverLabel: TextInputEditText
 
+    // Footer
+    private lateinit var headerFooter: LinearLayout
+    private lateinit var bodyFooter: LinearLayout
+    private lateinit var ivFooterArrow: ImageView
+    private lateinit var actFooter: AutoCompleteTextView
+    private lateinit var etFooterLabel: TextInputEditText
+    private lateinit var ivFooterSnapshot: ImageView
+    private lateinit var progressFooter: ProgressBar
+
     private lateinit var btnSave: MaterialButton
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -93,7 +102,14 @@ class OverlaysSettingsFragment : Fragment(R.layout.fragment_overlays_settings) {
         actCover           = view.findViewById(R.id.act_cover)
         ivCoverSnapshot    = view.findViewById(R.id.iv_cover_snapshot)
         progressCover      = view.findViewById(R.id.progress_cover)
-        etCoverLabel      = view.findViewById(R.id.et_cover_label)
+        etCoverLabel       = view.findViewById(R.id.et_cover_label)
+        headerFooter       = view.findViewById(R.id.header_footer)
+        bodyFooter         = view.findViewById(R.id.body_footer)
+        ivFooterArrow      = view.findViewById(R.id.iv_footer_arrow)
+        actFooter          = view.findViewById(R.id.act_footer)
+        etFooterLabel      = view.findViewById(R.id.et_footer_label)
+        ivFooterSnapshot   = view.findViewById(R.id.iv_footer_snapshot)
+        progressFooter     = view.findViewById(R.id.progress_footer)
 
         btnClose.setOnClickListener { parentFragmentManager.popBackStack() }
         headerTeams.setOnClickListener {
@@ -259,6 +275,44 @@ class OverlaysSettingsFragment : Fragment(R.layout.fragment_overlays_settings) {
 
             override fun afterTextChanged(s: Editable?) { /*no-op*/ }
         })
+
+        headerFooter.setOnClickListener {
+            val open = bodyFooter.isVisible
+            bodyFooter.visibility   = if (open) View.GONE else View.VISIBLE
+            ivFooterArrow.rotation  = if (open) 0f else 180f
+//            vm.setFooterEnabled(!open)
+        }
+        vm.footers.observe(viewLifecycleOwner) { list ->
+            val names  = list.map { it.name }
+            val adapter = ArrayAdapter(requireContext(),
+                android.R.layout.simple_list_item_1,
+                names)
+            actFooter.setAdapter(adapter)
+        }
+
+        // Restaurar selección previa y snapshot
+        vm.selectedFooter.value
+            ?.takeIf(String::isNotBlank)
+            ?.let { name ->
+                actFooter.setText(name, false)
+                loadFooterSnapshot(name)
+            }
+
+        actFooter.setOnItemClickListener { _, _, pos, _ ->
+            val name = actFooter.adapter.getItem(pos) as String
+            vm.setFooter(name)
+            loadFooterSnapshot(name)
+        }
+
+        // Label
+        vm.selectedFooterLabel.observe(viewLifecycleOwner) { text ->
+            if (etFooterLabel.text.toString() != text) {
+                etFooterLabel.setText(text)
+            }
+        }
+        etFooterLabel.doOnTextChanged { text, _, _, _ ->
+            vm.setFooterLabel(text.toString())
+        }
     }
 
     /** Carga logo de Team */
@@ -424,6 +478,38 @@ class OverlaysSettingsFragment : Fragment(R.layout.fragment_overlays_settings) {
                     onError = { _, _ ->
                         progressCover.visibility = View.GONE
                         ivCoverSnapshot.visibility = View.VISIBLE
+                    }
+                )
+            }
+        }
+    }
+
+    private fun loadFooterSnapshot(name: String) {
+        val item = vm.footers.value?.firstOrNull { it.name == name }
+        val url  = item?.snapshots?.get("full")
+
+        if (url.isNullOrBlank()) {
+            progressFooter.visibility   = View.GONE
+            ivFooterSnapshot.setImageResource(R.drawable.ic_image_placeholder)
+            ivFooterSnapshot.visibility = View.VISIBLE
+        } else {
+            ivFooterSnapshot.visibility = View.INVISIBLE
+            progressFooter.visibility   = View.VISIBLE
+            ivFooterSnapshot.load(url) {
+                placeholder(null)
+                error(R.drawable.ic_image_placeholder)
+                listener(
+                    onStart = {
+                        progressFooter.visibility   = View.VISIBLE
+                        ivFooterSnapshot.visibility = View.INVISIBLE
+                    },
+                    onSuccess = { _, _ ->
+                        progressFooter.visibility   = View.GONE
+                        ivFooterSnapshot.visibility = View.VISIBLE
+                    },
+                    onError = { _, _ ->
+                        progressFooter.visibility   = View.GONE
+                        ivFooterSnapshot.visibility = View.VISIBLE
                     }
                 )
             }
