@@ -67,6 +67,9 @@ class OverlaysSettingsViewModel(
     private val _covers = MutableLiveData<List<CoverItem>>(emptyList())
     val covers: LiveData<List<CoverItem>> = _covers
 
+    private val _footers = MutableLiveData<List<CoverItem>>(emptyList())
+    val footers: LiveData<List<CoverItem>> = _footers
+
     companion object {
         private const val TAG        = "OverlaysVM"
         private const val KEY_TEAM1  = "key_team1"
@@ -79,6 +82,9 @@ class OverlaysSettingsViewModel(
         private const val KEY_COVER_NAME    = "key_cover_name"
         private const val KEY_COVER_ENABLED = "key_cover_enabled"
         private const val KEY_COVER_LABEL     = "key_cover_label"
+        private const val KEY_FOOTER_NAME    = "key_footer_name"
+        private const val KEY_FOOTER_ENABLED = "key_footer_enabled"
+        private const val KEY_FOOTER_LABEL   = "key_footer_label"
         private const val KEY_SCORE1 = "key_score1"
         private const val KEY_SCORE2 = "key_score2"
     }
@@ -103,6 +109,12 @@ class OverlaysSettingsViewModel(
         savedStateHandle.getLiveData(KEY_COVER_ENABLED, false)
     val selectedCoverLabel: MutableLiveData<String> =
         savedStateHandle.getLiveData(KEY_COVER_LABEL, "")
+    val selectedFooter: MutableLiveData<String> =
+        savedStateHandle.getLiveData(KEY_FOOTER_NAME, "")
+    val footerEnabled: MutableLiveData<Boolean> =
+        savedStateHandle.getLiveData(KEY_FOOTER_ENABLED, false)
+    val selectedFooterLabel: MutableLiveData<String> =
+        savedStateHandle.getLiveData(KEY_FOOTER_LABEL, "")
 
     init {
         viewModelScope.launch {
@@ -110,6 +122,7 @@ class OverlaysSettingsViewModel(
             fetchScoreboardItems()
             fetchLineupItems()
             fetchCoverItems()
+            fetchFooterItems()
         }
     }
 
@@ -297,6 +310,54 @@ class OverlaysSettingsViewModel(
         }
     }
 
+    private suspend fun fetchFooterItems() {
+        try {
+            val snap = db.collection("footer").get().await()
+            val list = snap.documents.mapNotNull { doc ->
+                val name    = doc.getString("name") ?: return@mapNotNull null
+
+                // snapshots (para la previsualización en Settings)
+                val rawSnap = doc.get("snapshot") as? Map<*, *>
+                val snaps = rawSnap
+                    ?.entries
+                    ?.mapNotNull { (k, v) ->
+                        (k as? String)?.let { key ->
+                            (v as? String)?.let { url ->
+                                key to url
+                            }
+                        }
+                    }
+                    ?.toMap()
+                    ?: emptyMap()
+
+                // build (la imagen base que usaremos en el OverlayFragment)
+                val rawBuild = doc.get("build") as? Map<*, *>
+                val builds = rawBuild
+                    ?.entries
+                    ?.mapNotNull { (k, v) ->
+                        (k as? String)?.let { key ->
+                            (v as? String)?.let { url ->
+                                key to url
+                            }
+                        }
+                    }
+                    ?.toMap()
+                    ?: emptyMap()
+
+                CoverItem(
+                    id        = doc.id,
+                    name      = name,
+                    snapshots = snaps,
+                    build     = builds
+                )
+            }
+            _footers.postValue(list)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error fetching footer items", e)
+            _footers.postValue(emptyList())
+        }
+    }
+
     // Métodos para actualizar la selección y que quede guardada
     fun setTeam1(alias: String) {
         savedStateHandle[KEY_TEAM1] = alias
@@ -327,5 +388,14 @@ class OverlaysSettingsViewModel(
     }
     fun setCoverLabel(label: String) {
         savedStateHandle[KEY_COVER_LABEL] = label
+    }
+    fun setFooter(name: String) {
+        savedStateHandle[KEY_FOOTER_NAME] = name
+    }
+    fun setFooterEnabled(enabled: Boolean) {
+        savedStateHandle[KEY_FOOTER_ENABLED] = enabled
+    }
+    fun setFooterLabel(label: String) {
+        savedStateHandle[KEY_FOOTER_LABEL] = label
     }
 }

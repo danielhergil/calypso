@@ -21,6 +21,7 @@ import com.danihg.calypso.R
 import com.danihg.calypso.camera.models.CameraViewModel
 import com.danihg.calypso.camera.models.OverlaysSettingsViewModel
 import com.danihg.calypso.overlays.filter.CoverOverlayGenerator
+import com.danihg.calypso.overlays.filter.FooterOverlayGenerator
 import com.danihg.calypso.overlays.filter.LineupOverlayGenerator
 import com.google.android.material.button.MaterialButton
 import com.pedro.encoder.input.gl.render.filters.`object`.ImageObjectFilterRender
@@ -55,6 +56,12 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
     private var isCoverAttached  = false
     private lateinit var frameCoverOverlay: FrameLayout
     private var coverLabel: String = ""
+    private lateinit var btnFooterOverlay: MaterialButton
+    private lateinit var spinnerFooter: ProgressBar
+    private lateinit var frameFooterOverlay: FrameLayout
+    private val footerFilter        by lazy { ImageObjectFilterRender() }
+    private var isFooterAttached    = false
+    private var compositeFooterBmp: Bitmap? = null
 
     private val scoreboardFilter by lazy { ImageObjectFilterRender() }
     private var logo1Bmp:    Bitmap? = null
@@ -88,6 +95,9 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
         btnCoverOverlay      = view.findViewById(R.id.btnCoverOverlay)
         spinnerCover         = view.findViewById(R.id.spinnerCover)
         frameCoverOverlay    = view.findViewById(R.id.frameCoverOverlay)
+        btnFooterOverlay = view.findViewById(R.id.btnFooterOverlay)
+        spinnerFooter    = view.findViewById(R.id.spinnerFooter)
+        frameFooterOverlay = view.findViewById(R.id.frameFooterOverlay)
 
         submenuOverlays.visibility = View.GONE
 
@@ -104,12 +114,12 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
             val bottomMarginPx = (parentH * 0.15f).toInt()
 
             // 2) calculamos cuánto “de más” tenemos respecto a 2069px
-            val extra = parentW - 2219f
+            val extra = parentW - 2069f
 
             // 3) si estamos en landscape y la pantalla es más ancha, desplazamos
             //    el contenedor la mitad del extra hacia la izquierda
             scoreContainer.translationX = if (isLandscape && extra > 0f) {
-                -extra / 2f
+                0f
             } else {
                 0f
             }
@@ -118,6 +128,99 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
             val lp = scoreContainer.layoutParams as FrameLayout.LayoutParams
             lp.setMargins(lp.leftMargin, lp.topMargin, lp.rightMargin, bottomMarginPx)
             scoreContainer.layoutParams = lp
+        }
+
+        vm.selectedFooter.observe(viewLifecycleOwner) { name ->
+            val has = name.isNotBlank()
+            btnFooterOverlay.visibility = if (has) View.VISIBLE else View.GONE
+            if (!has) vm.setFooterEnabled(false)
+            updateOverlaysToggle()
+        }
+
+        vm.footerEnabled.observe(viewLifecycleOwner) { enabled ->
+            btnFooterOverlay.isChecked = enabled
+            val bg = if (enabled)
+                ContextCompat.getColor(requireContext(), R.color.calypso_red)
+            else Color.TRANSPARENT
+            btnFooterOverlay.backgroundTintList = ColorStateList.valueOf(bg)
+            btnFooterOverlay.iconTint = ColorStateList.valueOf(
+                if (enabled) Color.BLACK else Color.WHITE
+            )
+
+            if (enabled) {
+                attachFooterOverlay()
+            } else if (isFooterAttached) {
+                genericStream.getGlInterface().removeFilter(footerFilter)
+                isFooterAttached = false
+            }
+        }
+
+        btnFooterOverlay.setOnClickListener {
+            // deshabilitar todos
+            btnScoreboardOverlay.isEnabled = false
+            btnLineupOverlay.isEnabled     = false
+            btnCoverOverlay.isEnabled      = false
+            btnFooterOverlay.isEnabled     = false
+
+            // ocultar iconos y mostrar spinners
+            btnScoreboardOverlay.visibility = View.GONE
+            btnLineupOverlay.visibility     = View.GONE
+            btnCoverOverlay.visibility      = View.GONE
+            btnFooterOverlay.visibility     = View.GONE
+            spinnerScoreboard.visibility    = View.VISIBLE
+            spinnerLineup.visibility        = View.VISIBLE
+            spinnerCover.visibility         = View.VISIBLE
+            spinnerFooter.visibility        = View.VISIBLE
+
+            // togglear estado en el VM
+            vm.setFooterEnabled(!(vm.footerEnabled.value ?: false))
+
+            viewLifecycleOwner.lifecycleScope.launch {
+                delay(3000)
+
+                // restaurar spinners e iconos
+                spinnerScoreboard.visibility = View.GONE
+                spinnerLineup.visibility     = View.GONE
+                spinnerCover.visibility      = View.GONE
+                spinnerFooter.visibility     = View.GONE
+
+                btnScoreboardOverlay.icon = ContextCompat.getDrawable(
+                    requireContext(), R.drawable.ic_scoreboard_overlay
+                )
+                btnLineupOverlay.icon = ContextCompat.getDrawable(
+                    requireContext(), R.drawable.ic_lineup_overlay
+                )
+                btnCoverOverlay.icon = ContextCompat.getDrawable(
+                    requireContext(), R.drawable.ic_cover_overlay
+                )
+                btnFooterOverlay.icon = ContextCompat.getDrawable(
+                    requireContext(), R.drawable.ic_image_placeholder
+                )
+
+                // restaurar visibilidades según selección actual
+                btnScoreboardOverlay.visibility = if (vm.selectedScoreboard.value?.isNotBlank() == true) View.VISIBLE else View.GONE
+                btnLineupOverlay    .visibility = if (vm.selectedLineup   .value?.isNotBlank() == true) View.VISIBLE else View.GONE
+                btnCoverOverlay     .visibility = if (vm.selectedCover    .value?.isNotBlank() == true) View.VISIBLE else View.GONE
+                btnFooterOverlay    .visibility = if (vm.selectedFooter   .value?.isNotBlank() == true) View.VISIBLE else View.GONE
+
+                // re-habilitar todos
+                btnScoreboardOverlay.isEnabled = true
+                btnLineupOverlay.isEnabled     = true
+                btnCoverOverlay.isEnabled      = true
+                btnFooterOverlay.isEnabled     = true
+
+                // imprimir en log los datos
+                val teamA     = vm.selectedTeam1.value ?: "–"
+                val teamB     = vm.selectedTeam2.value ?: "–"
+                val scoreA    = vm.score1.value ?: 0
+                val scoreB    = vm.score2.value ?: 0
+                val footerTxt = vm.selectedFooterLabel.value.orEmpty()
+
+                Log.d(
+                    "OverlaysFragment",
+                    "Footer Overlay → Teams: $teamA vs $teamB | Scores: $scoreA–$scoreB | Text: '$footerTxt'"
+                )
+            }
         }
 
         vm.selectedCoverLabel.observe(viewLifecycleOwner) { label ->
@@ -180,17 +283,22 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
             btnScoreboardOverlay.isEnabled = false
             btnLineupOverlay.isEnabled     = false
             btnCoverOverlay.isEnabled      = false
+            btnFooterOverlay.isEnabled     = false
 
             // oculta íconos y muestra spinners
             btnScoreboardOverlay.icon = null
             btnLineupOverlay.icon     = null
             btnCoverOverlay.icon      = null
+            btnFooterOverlay.icon     = null
+
             btnScoreboardOverlay.visibility = View.GONE
             btnLineupOverlay.visibility     = View.GONE
             btnCoverOverlay.visibility      = View.GONE
+            btnFooterOverlay.visibility     = View.GONE
             spinnerScoreboard.visibility    = View.VISIBLE
             spinnerLineup.visibility        = View.VISIBLE
             spinnerCover.visibility         = View.VISIBLE
+            spinnerFooter.visibility        = View.VISIBLE
 
             // cambia estado en el ViewModel
             vm.setCoverEnabled(!(vm.coverEnabled.value ?: false))
@@ -201,6 +309,7 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
                 spinnerScoreboard.visibility = View.GONE
                 spinnerLineup.visibility     = View.GONE
                 spinnerCover.visibility      = View.GONE
+                spinnerFooter.visibility     = View.GONE
 
                 btnScoreboardOverlay.icon = ContextCompat.getDrawable(
                     requireContext(), R.drawable.ic_scoreboard_overlay
@@ -211,14 +320,19 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
                 btnCoverOverlay.icon = ContextCompat.getDrawable(
                     requireContext(), R.drawable.ic_cover_overlay
                 )
+                btnFooterOverlay.icon = ContextCompat.getDrawable(
+                    requireContext(), R.drawable.ic_image_placeholder
+                )
 
                 btnScoreboardOverlay.visibility = View.VISIBLE
                 btnLineupOverlay.visibility     = View.VISIBLE
                 btnCoverOverlay.visibility      = View.VISIBLE
+                btnFooterOverlay.visibility     = View.VISIBLE
 
                 btnScoreboardOverlay.isEnabled = true
                 btnLineupOverlay.isEnabled     = true
                 btnCoverOverlay.isEnabled      = true
+                btnFooterOverlay.isEnabled     = true
             }
         }
 
@@ -227,20 +341,24 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
             btnScoreboardOverlay.isEnabled = false
             btnLineupOverlay    .isEnabled = false
             btnCoverOverlay     .isEnabled = false
+            btnFooterOverlay    .isEnabled = false
 
             // 2) Quitamos todos los iconos y ocultamos los botones
             btnScoreboardOverlay.icon = null
             btnLineupOverlay    .icon = null
             btnCoverOverlay     .icon = null
+            btnFooterOverlay    .icon = null
 
             btnScoreboardOverlay.visibility = View.GONE
             btnLineupOverlay    .visibility = View.GONE
             btnCoverOverlay     .visibility = View.GONE
+            btnFooterOverlay    .visibility = View.GONE
 
             // 3) Mostramos TODOS los spinners
             spinnerScoreboard.visibility = View.VISIBLE
             spinnerLineup    .visibility = View.VISIBLE
             spinnerCover     .visibility = View.VISIBLE
+            spinnerFooter    .visibility = View.VISIBLE
 
             // 4) Cambiamos el estado en el ViewModel
             vm.setLineupEnabled(!(vm.lineupEnabled.value ?: false))
@@ -253,6 +371,7 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
                 spinnerScoreboard.visibility = View.GONE
                 spinnerLineup    .visibility = View.GONE
                 spinnerCover     .visibility = View.GONE
+                spinnerFooter    .visibility = View.GONE
 
                 // Volvemos a poner los iconos
                 btnScoreboardOverlay.icon = ContextCompat.getDrawable(
@@ -264,16 +383,21 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
                 btnCoverOverlay     .icon = ContextCompat.getDrawable(
                     requireContext(), R.drawable.ic_cover_overlay
                 )
+                btnFooterOverlay    .icon = ContextCompat.getDrawable(
+                    requireContext(), R.drawable.ic_image_placeholder
+                )
 
                 // Restauramos visibilidad según selección actual
                 btnScoreboardOverlay.visibility = if (vm.selectedScoreboard.value?.isNotBlank() == true) View.VISIBLE else View.GONE
                 btnLineupOverlay    .visibility = if (vm.selectedLineup   .value?.isNotBlank() == true) View.VISIBLE else View.GONE
                 btnCoverOverlay     .visibility = if (vm.selectedCover    .value?.isNotBlank() == true) View.VISIBLE else View.GONE
+                btnFooterOverlay    .visibility = if (vm.selectedFooter   .value?.isNotBlank() == true) View.VISIBLE else View.GONE
 
                 // Re-habilitamos los botones
                 btnScoreboardOverlay.isEnabled = true
                 btnLineupOverlay    .isEnabled = true
                 btnCoverOverlay     .isEnabled = true
+                btnFooterOverlay    .isEnabled = true
             }
         }
 
@@ -339,9 +463,11 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
                 frameSB.visibility = if (vm.selectedScoreboard.value?.isNotBlank() == true) View.VISIBLE else View.GONE
                 frameCoverOverlay.visibility = if (vm.selectedCover.value?.isNotBlank() == true)
                     View.VISIBLE else View.GONE
+                frameFooterOverlay.visibility =
+                    if (vm.selectedFooter.value?.isNotBlank() == true) View.VISIBLE else View.GONE
 
                 // Finalmente abro el submenú sólo si hay al menos uno
-                submenuOverlays.visibility = if (frameLU.isVisible || frameSB.isVisible || frameCoverOverlay.isVisible) View.VISIBLE else View.GONE
+                submenuOverlays.visibility = if (frameLU.isVisible || frameSB.isVisible || frameCoverOverlay.isVisible || frameFooterOverlay.isVisible) View.VISIBLE else View.GONE
             }
         }
 
@@ -351,19 +477,23 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
             btnScoreboardOverlay.isEnabled = false
             btnLineupOverlay    .isEnabled = false
             btnCoverOverlay     .isEnabled = false
+            btnFooterOverlay    .isEnabled = false
 
             // 2) Ocultar íconos y mostrar spinners en los tres
             btnScoreboardOverlay.icon = null
             btnLineupOverlay    .icon = null
             btnCoverOverlay     .icon = null
+            btnFooterOverlay    .icon = null
 
             btnScoreboardOverlay.visibility = View.GONE
             btnLineupOverlay    .visibility = View.GONE
             btnCoverOverlay     .visibility = View.GONE
+            btnFooterOverlay    .visibility = View.GONE
 
             spinnerScoreboard.visibility = View.VISIBLE
             spinnerLineup    .visibility = View.VISIBLE
             spinnerCover     .visibility = View.VISIBLE
+            spinnerFooter    .visibility = View.VISIBLE
 
             // 3) Cambiar estado en el VM
             vm.setScoreboardEnabled(!(vm.scoreboardEnabled.value ?: false))
@@ -376,6 +506,7 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
                 spinnerScoreboard.visibility = View.GONE
                 spinnerLineup    .visibility = View.GONE
                 spinnerCover     .visibility = View.GONE
+                spinnerFooter    .visibility = View.GONE
 
                 // Restaurar íconos
                 btnScoreboardOverlay.icon = ContextCompat.getDrawable(
@@ -387,16 +518,21 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
                 btnCoverOverlay     .icon = ContextCompat.getDrawable(
                     requireContext(), R.drawable.ic_cover_overlay
                 )
+                btnFooterOverlay    .icon = ContextCompat.getDrawable(
+                    requireContext(), R.drawable.ic_image_placeholder
+                )
 
                 // Restaurar visibilidades según selección actual
                 btnScoreboardOverlay.visibility = if (vm.selectedScoreboard.value?.isNotBlank() == true) View.VISIBLE else View.GONE
                 btnLineupOverlay    .visibility = if (vm.selectedLineup   .value?.isNotBlank() == true) View.VISIBLE else View.GONE
                 btnCoverOverlay     .visibility = if (vm.selectedCover    .value?.isNotBlank() == true) View.VISIBLE else View.GONE
+                btnFooterOverlay    .visibility = if (vm.selectedFooter   .value?.isNotBlank() == true) View.VISIBLE else View.GONE
 
                 // Re-habilitar todos
                 btnScoreboardOverlay.isEnabled = true
                 btnLineupOverlay    .isEnabled = true
                 btnCoverOverlay     .isEnabled = true
+                btnFooterOverlay    .isEnabled = true
             }
         }
 
@@ -754,6 +890,79 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
         coverFilter.setPosition(posX, posY)
     }
 
+    private fun attachFooterOverlay() {
+        lifecycleScope.launch {
+            // 1) Descarga todo en background
+            val item    = vm.footers.value!!.first { it.name == vm.selectedFooter.value }
+            val baseBmp = withContext(Dispatchers.IO) {
+                URL(item.build["footer"]!!).downloadBitmap()
+            }
+            val team1   = vm.teams.value!!.first { it.name == vm.selectedTeam1.value }
+            val team2   = vm.teams.value!!.first { it.name == vm.selectedTeam2.value }
+            val logo1   = withContext(Dispatchers.IO) { URL(team1.logoUrl!!).downloadBitmap() }
+            val logo2   = withContext(Dispatchers.IO) { URL(team2.logoUrl!!).downloadBitmap() }
+            val footerTxt = vm.selectedFooterLabel.value.orEmpty()
+            val sc1     = vm.score1.value ?: 0
+            val sc2     = vm.score2.value ?: 0
+
+            // 2) En UI, actualizar el filtro directamente sobre el bitmap recién compuesto
+            withContext(Dispatchers.Main) {
+                FooterOverlayGenerator.updateOverlay(
+                    base       = baseBmp,
+                    logo1      = logo1,
+                    logo2      = logo2,
+                    teamName1  = team1.name,
+                    teamName2  = team2.name,
+                    footerText = footerTxt,
+                    score1     = sc1,
+                    score2     = sc2,
+                    filter     = footerFilter
+                )
+                applyFooterScaleAndPosition(baseBmp)
+                genericStream.getGlInterface().addFilter(footerFilter)
+                isFooterAttached = true
+            }
+        }
+    }
+
+
+    private fun applyFooterScaleAndPosition(bmp: Bitmap) {
+        val metrics = resources.displayMetrics
+        val sw = metrics.widthPixels.toFloat()
+        val sh = metrics.heightPixels.toFloat()
+        val isLandscape = resources.configuration.orientation ==
+                Configuration.ORIENTATION_LANDSCAPE
+
+        // Para reducir al 30% en X y al 80% en Y:
+        // partimos de un scale basado en el tamaño real, luego lo ajustamos
+        val rawScaleX = bmp.width  / sw * 100f
+        val rawScaleY = bmp.height / sh * 100f
+
+//        val scaleX = rawScaleX  * 0.8f
+//        val scaleY = rawScaleY  * 0.7f
+
+        val (scaleX, scaleY, posY) = if (isLandscape) {
+            // En landscape, más ancho y un poco más abajo
+            val sx = rawScaleX * 1.4f    // +20% de ancho
+            val sy = rawScaleY * 0.7f    // -20% de alto (ajusta al gusto)
+            val py = (100f - sy) / 1.1f                 // posY fijo más abajo (50% de pantalla)
+            Triple(sx, sy, py)
+        } else {
+            // Portrait: 80% ancho, 70% alto, centrado verticalmente
+            val sx = rawScaleX * 0.8f
+            val sy = rawScaleY * 0.8f
+            val py = (100f - sy) / 1.2f
+            Triple(sx, sy, py)
+        }
+
+        // Centrar
+        val posX = (100f - scaleX) / 2f
+//        val posY = (100f - scaleY) / 1.2f
+
+        footerFilter.setScale(scaleX, scaleY)
+        footerFilter.setPosition(posX, posY)
+    }
+
     private fun <T> asyncIO(block: suspend ()->T) =
         lifecycleScope.async(Dispatchers.IO) { block() }
     private fun URL.downloadBitmap() =
@@ -763,8 +972,9 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
         val hasScore  = vm.selectedScoreboard.value?.isNotBlank() == true
         val hasLineup = vm.selectedLineup.value  ?.isNotBlank() == true
         val hasCover  = vm.selectedCover.value   ?.isNotBlank() == true
+        val hasFooter = vm.selectedFooter.value?.isNotBlank() == true
 
-        val showToggle = hasScore || hasLineup || hasCover
+        val showToggle = hasScore || hasLineup || hasCover || hasFooter
         btnOverlaysToggle.visibility = if (showToggle) View.VISIBLE else View.GONE
 
         if (!showToggle) {
@@ -772,6 +982,7 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
             vm.setScoreboardEnabled(false)
             vm.setLineupEnabled(false)
             vm.setCoverEnabled(false)
+            vm.setFooterEnabled(false)
         }
     }
 }
