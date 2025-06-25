@@ -180,7 +180,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:alpha="0.8"
-                    app:icon="@drawable/ic_image_placeholder"
+                    app:icon="@drawable/ic_footer_overlay"
                     app:iconSize="24dp"
                     app:cornerRadius="28dp"
                     app:backgroundTint="#CCFFFFFF"

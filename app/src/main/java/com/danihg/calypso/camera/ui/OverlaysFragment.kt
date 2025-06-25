@@ -194,7 +194,7 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
                     requireContext(), R.drawable.ic_cover_overlay
                 )
                 btnFooterOverlay.icon = ContextCompat.getDrawable(
-                    requireContext(), R.drawable.ic_image_placeholder
+                    requireContext(), R.drawable.ic_footer_overlay
                 )
 
                 // restaurar visibilidades según selección actual
@@ -321,7 +321,7 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
                     requireContext(), R.drawable.ic_cover_overlay
                 )
                 btnFooterOverlay.icon = ContextCompat.getDrawable(
-                    requireContext(), R.drawable.ic_image_placeholder
+                    requireContext(), R.drawable.ic_footer_overlay
                 )
 
                 btnScoreboardOverlay.visibility = View.VISIBLE
@@ -384,7 +384,7 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
                     requireContext(), R.drawable.ic_cover_overlay
                 )
                 btnFooterOverlay    .icon = ContextCompat.getDrawable(
-                    requireContext(), R.drawable.ic_image_placeholder
+                    requireContext(), R.drawable.ic_footer_overlay
                 )
 
                 // Restauramos visibilidad según selección actual
@@ -519,7 +519,7 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
                     requireContext(), R.drawable.ic_cover_overlay
                 )
                 btnFooterOverlay    .icon = ContextCompat.getDrawable(
-                    requireContext(), R.drawable.ic_image_placeholder
+                    requireContext(), R.drawable.ic_footer_overlay
                 )
 
                 // Restaurar visibilidades según selección actual
