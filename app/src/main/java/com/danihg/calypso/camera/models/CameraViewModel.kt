@@ -24,6 +24,16 @@ class CameraViewModel(
     /** Timestamp en milis al iniciar grabación */
     var recordStartTime: Long = 0L
 
+    /** Marca si hay una grabación de replay en segundo plano */
+    var isReplayRecording: Boolean = false
+
+    /** Session ID para la grabación de replay (si necesitamos distinguirla) */
+    var replaySessionId: String? = null
+
+    /** Path del fichero temporal de replay para poder borrarlo */
+    var replayFilePath: String? = null
+
+
     // Resto de tu ViewModel (LiveData, requestLoadProfile, setStreamUrl, etc.)
     private val _loadProfileEvent = MutableLiveData<Event<StreamProfile>>()
     val loadProfileEvent: LiveData<Event<StreamProfile>> = _loadProfileEvent

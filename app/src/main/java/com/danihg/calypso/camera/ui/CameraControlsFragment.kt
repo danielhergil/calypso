@@ -25,6 +25,7 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import com.danihg.calypso.R
+import com.danihg.calypso.camera.models.CameraSettingsViewModel
 import com.danihg.calypso.camera.models.CameraViewModel
 import com.danihg.calypso.constants.ACTION_START_RECORD
 import com.danihg.calypso.constants.ACTION_START_STREAM
@@ -40,6 +41,7 @@ import com.google.android.material.card.MaterialCardView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import java.io.File
 
 class CameraControlsFragment : Fragment(R.layout.fragment_camera_controls) {
 
@@ -47,6 +49,7 @@ class CameraControlsFragment : Fragment(R.layout.fragment_camera_controls) {
     private val firestore: FirebaseFirestore by lazy { FirebaseFirestore.getInstance() }
 
     private val cameraViewModel: CameraViewModel by activityViewModels()
+    private val settingsVm: CameraSettingsViewModel by activityViewModels()
     private val genericStream get() = cameraViewModel.genericStream
 
     private lateinit var btnRecord: MaterialButton
@@ -96,6 +99,19 @@ class CameraControlsFragment : Fragment(R.layout.fragment_camera_controls) {
             val isValid = url.isNotBlank() && url != "None"
             btnStream.isEnabled = isValid
             btnStream.alpha = if (isValid) 1f else 0.4f
+        }
+
+        settingsVm.isPlaceholderActive.observe(viewLifecycleOwner) { replaysOn ->
+            Log.d("CameraControls", "Observer Replays: replaysOn=$replaysOn, isStreaming=${genericStream.isStreaming}, isReplayRecording=${cameraViewModel.isReplayRecording}")
+            if (genericStream.isStreaming) {
+                if (replaysOn && !cameraViewModel.isReplayRecording) {
+                    Log.d("CameraControls", "Observer → arrancando replay en caliente")
+                    startReplay()
+                } else if (!replaysOn && cameraViewModel.isReplayRecording) {
+                    Log.d("CameraControls", "Observer → deteniendo replay en caliente")
+                    stopReplay()
+                }
+            }
         }
 
         // 3) Listeners
@@ -203,6 +219,58 @@ class CameraControlsFragment : Fragment(R.layout.fragment_camera_controls) {
         syncButtonStates()
     }
 
+    /** Lanza una grabación “fantasma” para replay. */
+    private fun startReplay() {
+        if (genericStream.isRecording || cameraViewModel.isReplayRecording){
+            Log.d("CameraControls", "startReplay(): ya había grabación o replay activo, skip")
+            return
+        }
+        Log.d("CameraControls", "startReplay(): iniciando replay")
+        val ctx = requireContext()
+        val intent = Intent(ctx, CameraService::class.java)
+        val sessionId = StorageUtils.generateSessionId()
+        val tempPath = StorageUtils.getTempRecordFile().absolutePath
+        intent.action = ACTION_START_RECORD
+        intent.putExtra(EXTRA_PATH, tempPath)
+        ContextCompat.startForegroundService(ctx, intent)
+        cameraViewModel.replaySessionId = sessionId
+        cameraViewModel.replayFilePath = tempPath
+        cameraViewModel.isReplayRecording = true
+
+        Log.d("CameraControls", "startReplay(): replayStarted session=$sessionId path=$tempPath")
+        syncButtonStates()
+    }
+
+    /** Para la grabación de replay y borra el fichero generado. */
+    private fun stopReplay() {
+        if (!cameraViewModel.isReplayRecording) {
+            Log.d("CameraControls", "stopReplay(): no había replay activo, skip")
+            return
+        }
+        Log.d("CameraControls", "stopReplay(): deteniendo replay session=${cameraViewModel.replaySessionId}")
+        val ctx = requireContext()
+        val intent = Intent(ctx, CameraService::class.java)
+        intent.action = ACTION_STOP_RECORD
+        ContextCompat.startForegroundService(ctx, intent)
+        cameraViewModel.replayFilePath?.let { path ->
+            File(path).also { Log.d("CameraControls", "stopReplay(): borrando fichero $path") }
+                .delete()
+        }
+        cameraViewModel.replaySessionId = null
+        cameraViewModel.replayFilePath = null
+        cameraViewModel.isReplayRecording = false
+
+        Log.d("CameraControls", "stopReplay(): replayStopped")
+        // SOLO refrescamos la UI si sigue activo el stream,
+        // para que al parar el stream no cambie el botón Record.
+        if (genericStream.isStreaming) {
+            Log.d("CameraControls", "stopReplay(): refrescando UI (stream activo)")
+            syncButtonStates()
+        } else {
+            Log.d("CameraControls", "stopReplay(): no refrescar UI (stream detenido)")
+        }
+    }
+
     private fun rotateBitmapIfNeeded(original: Bitmap): Bitmap {
         return if (original.width > original.height) {
             // Rotamos 90° para que sea visualmente portrait
@@ -222,8 +290,33 @@ class CameraControlsFragment : Fragment(R.layout.fragment_camera_controls) {
     private fun toggleRecord() {
         val ctx = requireContext()
         val intent = Intent(ctx, CameraService::class.java)
-
         val stream = genericStream
+
+        val replaysEnabled = settingsVm.isPlaceholderActive.value == true
+        val isReplay      = cameraViewModel.isReplayRecording
+        val isStreaming   = stream.isStreaming
+
+        // Escenario: estoy haciendo stream + replay activo + usuario pulsa “Record”
+        if (isStreaming && replaysEnabled && isReplay) {
+            Log.d("CameraControls", "toggleRecord(): switch replay→record REAL durante STREAM")
+            // 1) cortamos la grabación de replay
+            stopReplay()
+            // 2) iniciamos grabación “real” (igual que en la rama de start-record)
+            cameraViewModel.recordStartTime = System.currentTimeMillis()
+            btnRecord.setIconResource(R.drawable.ic_record_mode)
+            btnRecord.iconTint = null
+            btnRecord.alpha = 0.5f
+            sessionId = StorageUtils.generateSessionId()
+            val tempPath = StorageUtils.getTempRecordFile().absolutePath
+            intent.action = ACTION_START_RECORD
+            intent.putExtra(EXTRA_PATH, tempPath)
+            ContextCompat.startForegroundService(ctx, intent)
+            showTemporarySpinnerOn(btnRecord, 2000L) {
+                btnRecord.alpha = 1f
+                syncButtonStates()
+            }
+            return
+        }
 
         if (!stream.isRecording) {
             // === INICIAR grabación ===
@@ -267,6 +360,11 @@ class CameraControlsFragment : Fragment(R.layout.fragment_camera_controls) {
                 btnRecord.alpha = 1f
                 syncButtonStates()  // Ahora isRecording=false, así que se pondrá ic_record_mode
                 uploadMetric("record", durationSec)
+                // Al parar grabación real, si seguimos en stream + replays activo, volvemos a lanzar replay
+                if (isStreaming && replaysEnabled) {
+                    Log.d("CameraControls", "toggleRecord(): reiniciando replay tras RECORD")
+                    startReplay()
+                }
             }
         }
     }
@@ -277,6 +375,7 @@ class CameraControlsFragment : Fragment(R.layout.fragment_camera_controls) {
         val stream = genericStream
 
         if (!stream.isStreaming) {
+            Log.d("CameraControls", "toggleStream(): iniciando STREAM (isStreaming=${stream.isStreaming})")
             // === INICIAR streaming ===
             cameraViewModel.streamStartTime = System.currentTimeMillis()
             // a) Atenuamos icono mientras dura spinner:
@@ -294,10 +393,18 @@ class CameraControlsFragment : Fragment(R.layout.fragment_camera_controls) {
 
             // d) Spinner 2 s; al terminar, restauramos icono según isStreaming=true
             showTemporarySpinnerOn(btnStream, 2000L) {
+                Log.d("CameraControls", "toggleStream(): STREAM arrancado (isStreaming=${genericStream.isStreaming})")
                 btnStream.alpha = 1f
                 syncButtonStates()  // Como el servicio ya puso isStreaming=true, se ve ic_stop+rojo
+                Log.d("CameraControls", "toggleStream(): replaysOn=${settingsVm.isPlaceholderActive.value}")
+                // Si replays activo, arrancamos grabación en background
+                if (settingsVm.isPlaceholderActive.value == true) {
+                    Log.d("CameraControls", "toggleStream(): arrancando replay en start-stream")
+                    startReplay()
+                }
             }
         } else {
+            Log.d("CameraControls", "toggleStream(): parando STREAM (isStreaming=${stream.isStreaming})")
             // === DETENER streaming ===
             val durationSec = (System.currentTimeMillis() - cameraViewModel.streamStartTime) / 1000
             // a) Atenuamos icono
@@ -313,9 +420,15 @@ class CameraControlsFragment : Fragment(R.layout.fragment_camera_controls) {
 
             // c) Spinner 2 s; al terminar, restauramos icono según isStreaming=false
             showTemporarySpinnerOn(btnStream, 2000L) {
+                Log.d("CameraControls", "toggleStream(): STREAM parado (isStreaming=${genericStream.isStreaming})")
                 btnStream.alpha = 1f
                 syncButtonStates()  // isStreaming=false → ic_stream_mode
                 uploadMetric("stream", durationSec)
+                // Al parar stream, también borramos el replay si existe
+                if (cameraViewModel.isReplayRecording) {
+                    Log.d("CameraControls", "toggleStream(): había replay → stopReplay()")
+                    stopReplay()
+                }
             }
         }
     }
@@ -324,7 +437,8 @@ class CameraControlsFragment : Fragment(R.layout.fragment_camera_controls) {
         Log.d("CameraControls", "syncButtonStates(): isRecording=${genericStream.isRecording}, isStreaming=${genericStream.isStreaming}")
 
         // Record
-        if (genericStream.isRecording) {
+        val actuallyRecording = genericStream.isRecording && !cameraViewModel.isReplayRecording
+        if (actuallyRecording) {
             btnRecord.setIconResource(R.drawable.ic_stop)
             btnRecord.iconTint = ColorStateList.valueOf(
                 ContextCompat.getColor(requireContext(), R.color.calypso_red)
@@ -334,7 +448,7 @@ class CameraControlsFragment : Fragment(R.layout.fragment_camera_controls) {
             btnRecord.iconTint = null
         }
 
-        // Stream
+        // Stream (igual que antes)
         if (genericStream.isStreaming) {
             btnStream.setIconResource(R.drawable.ic_stop)
             btnStream.iconTint = ColorStateList.valueOf(

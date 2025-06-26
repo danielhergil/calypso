@@ -23,8 +23,6 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.isGone
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
-import androidx.fragment.app.viewModels
-import androidx.lifecycle.SavedStateViewModelFactory
 import com.danihg.calypso.R
 import com.danihg.calypso.camera.models.CameraSettingsViewModel
 import com.danihg.calypso.camera.models.CameraViewModel
@@ -43,9 +41,7 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
     // —————————————————————————————————————————
     // 1) ViewModels y resto de referencias (igual que antes)
     // —————————————————————————————————————————
-    private val settingsVm: CameraSettingsViewModel by viewModels {
-        SavedStateViewModelFactory(requireActivity().application, this)
-    }
+    private val settingsVm: CameraSettingsViewModel by activityViewModels()
     private val sharedProfileVm: SharedProfileViewModel by activityViewModels()
     private val cameraViewModel: CameraViewModel by activityViewModels()
     private val genericStream get() = cameraViewModel.genericStream
