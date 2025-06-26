@@ -3,7 +3,9 @@ package com.danihg.calypso.camera.ui
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.res.ColorStateList
 import android.content.res.Configuration
+import android.graphics.Color
 import android.hardware.camera2.CameraCharacteristics
 import android.os.Bundle
 import android.os.Handler
@@ -17,6 +19,7 @@ import android.widget.LinearLayout
 import android.widget.RelativeLayout
 import android.widget.SeekBar
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.core.view.isGone
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -92,6 +95,12 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
     private var prevCoverEnabled: Boolean? = null
     private var prevFooterEnabled:   Boolean? = null
 
+    private lateinit var btnReplays: MaterialButton
+    private lateinit var replayOptionsContainer: LinearLayout
+    private lateinit var btnReplayOption1: MaterialButton
+    private lateinit var btnReplayOption2: MaterialButton
+    private lateinit var btnReplayOption3: MaterialButton
+
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -126,6 +135,16 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         btnMute                   = view.findViewById(R.id.btnMute)
         volumeExpandable          = view.findViewById(R.id.volume_expandable)
         seekBarVolume             = view.findViewById(R.id.seekBarVolume)
+
+        btnReplays       = view.findViewById(R.id.btnReplays)
+        replayOptionsContainer    = view.findViewById(R.id.replay_options_container)
+        btnReplayOption1          = view.findViewById(R.id.btnReplayOption1)
+        btnReplayOption2          = view.findViewById(R.id.btnReplayOption2)
+        btnReplayOption3          = view.findViewById(R.id.btnReplayOption3)
+
+        btnReplays.visibility = View.GONE
+        replayOptionsContainer.visibility = View.GONE
+
 
         val root = requireActivity().findViewById<FrameLayout>(R.id.overlays_container)
         val audio = view.findViewById<RelativeLayout>(R.id.audio_controls_container)
@@ -168,6 +187,21 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         // —————————————————————————
         sharedProfileVm.loadedProfile.observe(viewLifecycleOwner) { updateProfileInfo() }
         sharedProfileVm.loadedProfileAlias.observe(viewLifecycleOwner) { updateProfileInfo() }
+
+        settingsVm.isPlaceholderActive.observe(viewLifecycleOwner) { active ->
+            // tint del placeholder
+            val tint = if (active)
+                ContextCompat.getColor(requireContext(), R.color.calypso_red)
+            else Color.TRANSPARENT
+            btnReplays.backgroundTintList = ColorStateList.valueOf(tint)
+            // muestra/oculta las 3 opciones ic_add
+            replayOptionsContainer.visibility = if (active) View.VISIBLE else View.GONE
+        }
+
+        btnReplays.setOnClickListener {
+            settingsVm.togglePlaceholder()
+        }
+
         // —————————————————————————
         // 3.4) Observadores LiveData en settingsVm (igual que antes)
         // —————————————————————————
@@ -301,12 +335,19 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                 btnExposureCompensation.visibility = View.GONE
                 btnSettingsStream.visibility      = View.GONE
                 btnSettingsCamera.visibility      = View.GONE
+                btnReplays.visibility    = View.GONE
                 seekBarExposure.visibility        = View.GONE
                 tvEvValue.visibility              = View.GONE
 
                 btnIso.visibility                 = View.GONE
                 btnExposureTime.visibility        = View.GONE
                 btnWhiteBalance.visibility        = View.GONE
+
+                // cerramos el sub-menú de replays
+                // cerramos el sub-menú de replays, salvo que el placeholder siga activo
+                val placeholderActive = settingsVm.isPlaceholderActive.value ?: false
+                replayOptionsContainer.visibility =
+                    if (placeholderActive) View.VISIBLE else View.GONE
 
                 settingsVm.setManualVisible(false)
                 settingsVm.setAutoVisible(false)
@@ -325,8 +366,9 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
             } else {
                 // Alternamos “Stream / Camera” (igual que antes)
                 val nextVis = if (btnSettingsStream.isGone) View.VISIBLE else View.GONE
-                btnSettingsStream.visibility = nextVis
-                btnSettingsCamera.visibility = nextVis
+                btnSettingsStream.visibility   = nextVis
+                btnSettingsCamera.visibility   = nextVis
+                btnReplays.visibility = View.VISIBLE
                 settingsVm.setStreamCameraVisible(nextVis == View.VISIBLE)
 
                 if (nextVis == View.VISIBLE) {
@@ -875,6 +917,10 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         val streamVis = if (streamVisible) View.VISIBLE else View.GONE
         btnSettingsStream.visibility = streamVis
         btnSettingsCamera.visibility = streamVis
+
+        val placeholderActive = settingsVm.isPlaceholderActive.value ?: false
+        replayOptionsContainer.visibility =
+            if (placeholderActive) View.VISIBLE else View.GONE
 
         // 3) Restaurar “Exposure Compensation Button”
         val expButtonVisible = settingsVm.isExposureButtonVisible.value ?: false

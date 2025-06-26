@@ -105,6 +105,12 @@ class CameraSettingsViewModel(
     private val _isVolumeMenuVisible = MutableLiveData(false)
     val isVolumeMenuVisible: LiveData<Boolean> = _isVolumeMenuVisible
 
+    private val _isPlaceholderActive = MutableLiveData(false)
+    val isPlaceholderActive: LiveData<Boolean> = _isPlaceholderActive
+
+    private val _isReplaysVisible = MutableLiveData(false)
+    val isReplaysVisible: LiveData<Boolean> = _isReplaysVisible
+
     // ------------------------------------------------------
     // Métodos para modificar el estado / SavedStateHandle
     // ------------------------------------------------------
@@ -171,5 +177,33 @@ class CameraSettingsViewModel(
     }
     fun setZoomLevel(level: Float) {
         savedStateHandle[KEY_ZOOM_LEVEL] = level
+    }
+    /**
+     * Activa/desactiva el botón de placeholder.
+     * Cuando se desactiva, cierra también el menú de replays.
+     */
+    fun togglePlaceholder() {
+        val now = !(_isPlaceholderActive.value ?: false)
+        _isPlaceholderActive.value = now
+        if (!now) {
+            _isReplaysVisible.value = false
+        }
+    }
+
+    /** Activa/desactiva el contenedor de replays. */
+    fun toggleReplays() {
+        _isReplaysVisible.value = !(_isReplaysVisible.value ?: false)
+    }
+    /** Fija el estado del placeholder sin toggle. Cuando se desactiva, cierra también el menú de replays. */
+    fun setPlaceholderActive(active: Boolean) {
+        _isPlaceholderActive.value = active
+        if (!active) {
+            _isReplaysVisible.value = false
+        }
+    }
+
+    /** Fija la visibilidad del contenedor de replays. */
+    fun setReplaysVisible(visible: Boolean) {
+        _isReplaysVisible.value = visible
     }
 }

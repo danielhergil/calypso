@@ -114,6 +114,23 @@
             app:backgroundTint="#CCFFFFFF"
             app:cornerRadius="28dp"/>
 
+        <!-- NUEVO: 2.2) Botón “Placeholder” toggle encima de SettingsCamera -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnReplays"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:layout_marginBottom="8dp"
+            android:visibility="gone"
+            android:alpha="0.8"
+            app:icon="@drawable/ic_replays"
+            app:iconTint="@color/black"
+            app:iconSize="34dp"
+            app:iconPadding="0dp"
+            app:iconGravity="textStart"
+            app:backgroundTint="#CCFFFFFF"
+            app:cornerRadius="28dp"/>
+
         <!-- ——————————————————————
              3) Botón para cámara (oculto al inicio)
              —————————————————————— -->
@@ -150,19 +167,81 @@
             app:backgroundTint="#CCFFFFFF"
             app:cornerRadius="28dp"/>
 
-        <!-- ——————————————————————
-             5) Botón principal de ajustes
-             —————————————————————— -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnSettings"
-            style="@style/Widget.MaterialComponents.Button"
-            android:layout_width="56dp"
-            android:layout_height="56dp"
-            android:alpha="0.8"
-            app:icon="@drawable/ic_settings"
-            app:iconSize="24dp"
-            app:backgroundTint="#CCFFFFFF"
-            app:cornerRadius="28dp"/>
+        <!-- 3) FILA HORIZONTAL que contiene “Settings” + “Replays” + opciones -->
+        <LinearLayout
+            android:id="@+id/settings_row"
+            android:orientation="horizontal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical">
+
+            <!-- 3.1) Botón principal de ajustes -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSettings"
+                style="@style/Widget.MaterialComponents.Button"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:alpha="0.8"
+                app:icon="@drawable/ic_settings"
+                app:iconSize="24dp"
+                app:backgroundTint="#CCFFFFFF"
+                app:cornerRadius="28dp"/>
+
+            <!-- 3.3) Contenedor de las 3 opciones “ic_add” -->
+            <LinearLayout
+                android:id="@+id/replay_options_container"
+                android:orientation="horizontal"
+                android:layout_width="wrap_content"
+                android:layout_height="56dp"
+                android:layout_marginStart="8dp"
+                android:visibility="gone">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnReplayOption1"
+                    style="@style/Widget.MaterialComponents.Button"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_marginStart="8dp"
+                    android:alpha="0.6"
+                    app:icon="@drawable/ic_add"
+                    app:iconTint="@color/black"
+                    app:iconSize="24dp"
+                    app:iconPadding="0dp"
+                    app:iconGravity="textStart"
+                    app:backgroundTint="#80FFFFFF"
+                    app:cornerRadius="24dp"/>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnReplayOption2"
+                    style="@style/Widget.MaterialComponents.Button"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_marginStart="8dp"
+                    android:alpha="0.6"
+                    app:icon="@drawable/ic_add"
+                    app:iconTint="@color/black"
+                    app:iconSize="24dp"
+                    app:iconPadding="0dp"
+                    app:iconGravity="textStart"
+                    app:backgroundTint="#80FFFFFF"
+                    app:cornerRadius="24dp"/>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnReplayOption3"
+                    style="@style/Widget.MaterialComponents.Button"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_marginStart="8dp"
+                    android:alpha="0.6"
+                    app:icon="@drawable/ic_add"
+                    app:iconTint="@color/black"
+                    app:iconSize="24dp"
+                    app:iconPadding="0dp"
+                    app:iconGravity="textStart"
+                    app:backgroundTint="#80FFFFFF"
+                    app:cornerRadius="24dp"/>
+            </LinearLayout>
+        </LinearLayout>
     </LinearLayout>
 
     <!-- Etiqueta que muestra el valor actual de EV -->

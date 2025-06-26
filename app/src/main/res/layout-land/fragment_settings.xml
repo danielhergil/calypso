@@ -113,6 +113,22 @@
             app:backgroundTint="#CCFFFFFF"
             app:cornerRadius="28dp" />
 
+        <!-- 1.7) Placeholder toggle -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnReplays"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:visibility="gone"
+            android:layout_marginEnd="8dp"
+            android:alpha="0.8"
+            app:iconPadding="0dp"
+            app:iconGravity="textStart"
+            app:icon="@drawable/ic_replays"
+            app:iconSize="34dp"
+            app:backgroundTint="#CCFFFFFF"
+            app:cornerRadius="28dp"/>
+
         <!-- 1.7) Botón “Settings Camera” (oculto al inicio) -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnSettingsCamera"
@@ -145,7 +161,7 @@
             app:backgroundTint="#CCFFFFFF"
             app:cornerRadius="28dp" />
 
-        <!-- 1.9) Botón “Settings” principal -->
+        <!-- 1.10) Botón “Settings” principal -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnSettings"
             style="@style/Widget.MaterialComponents.Button"
@@ -155,7 +171,64 @@
             app:icon="@drawable/ic_settings"
             app:iconSize="24dp"
             app:backgroundTint="#CCFFFFFF"
-            app:cornerRadius="28dp" />
+            app:cornerRadius="28dp"/>
+
+    </LinearLayout>
+
+    <!-- —————————————————————————————————————————
+         2) Contenedor “±” independiente que flota sobre btnSettings
+         (hermano de settings_menu, jamás lo desplaza)
+         ————————————————————————————————————————— -->
+    <LinearLayout
+        android:id="@+id/replay_options_container"
+        android:orientation="vertical"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="100dp"
+        android:layout_marginBottom="96dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnReplayOption1"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:alpha="0.6"
+            app:iconPadding="0dp"
+            app:iconGravity="textStart"
+            app:icon="@drawable/ic_add"
+            app:iconSize="24dp"
+            app:backgroundTint="#80FFFFFF"
+            app:cornerRadius="24dp"/>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnReplayOption2"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginTop="4dp"
+            android:alpha="0.6"
+            app:iconPadding="0dp"
+            app:iconGravity="textStart"
+            app:icon="@drawable/ic_add"
+            app:iconSize="24dp"
+            app:backgroundTint="#80FFFFFF"
+            app:cornerRadius="24dp"/>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnReplayOption3"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginTop="4dp"
+            android:alpha="0.6"
+            app:iconPadding="0dp"
+            app:iconGravity="textStart"
+            app:icon="@drawable/ic_add"
+            app:iconSize="24dp"
+            app:backgroundTint="#80FFFFFF"
+            app:cornerRadius="24dp"/>
     </LinearLayout>
 
     <!-- —————————————————————————————————————————
