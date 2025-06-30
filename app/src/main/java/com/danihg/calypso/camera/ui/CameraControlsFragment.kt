@@ -270,6 +270,31 @@ class CameraControlsFragment : Fragment(R.layout.fragment_camera_controls) {
         return tempPath
     }
 
+    /**
+     * Pausa la grabación de replay sin borrar el fichero temporal,
+     * devolviendo la ruta del fichero para poder hacer el clip.
+     * NO actualiza la UI, mantiene el estado visual intacto.
+     */
+    fun pauseReplaySilent(): String? {
+        if (!cameraViewModel.isReplayRecording) return null
+
+        Log.d("CameraControls", "pauseReplaySilent(): deteniendo replay silent session=${cameraViewModel.replaySessionId}")
+        // 1) Pide al servicio que pare la grabación
+        Intent(requireContext(), CameraService::class.java).apply {
+            action = ACTION_STOP_RECORD
+        }.also { ContextCompat.startForegroundService(requireContext(), it) }
+
+        // 2) Recupera la ruta del fichero temporal
+        val tempPath = cameraViewModel.replayFilePath
+
+        // 3) Limpia el estado interno (pero NO refresca UI)
+        cameraViewModel.replaySessionId = null
+        cameraViewModel.replayFilePath  = null
+        cameraViewModel.isReplayRecording = false
+
+        return tempPath
+    }
+
     /** Para la grabación de replay y borra el fichero generado. */
     fun stopReplay() {
         if (!cameraViewModel.isReplayRecording) {

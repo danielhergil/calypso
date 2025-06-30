@@ -224,7 +224,7 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
             // ① Detener ghost o manual sin borrar
             if (isReplay) {
                 Log.d("SettingsFragment", "1️⃣ pauseReplay()")
-                val tempPath = cameraControls?.pauseReplay()
+                val tempPath = cameraControls?.pauseReplaySilent()
                 Log.d("SettingsFragment", "   pauseReplay() devolvió tempPath=$tempPath, exists=${tempPath?.let { File(it).exists() }}")
             } else if (isManual) {
                 Log.d("SettingsFragment", "1️⃣ stopManualRecord()")
