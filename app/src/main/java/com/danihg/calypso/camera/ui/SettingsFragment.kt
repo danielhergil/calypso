@@ -3,6 +3,7 @@ package com.danihg.calypso.camera.ui
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.Intent
 import android.content.res.ColorStateList
 import android.content.res.Configuration
 import android.graphics.Color
@@ -29,8 +30,17 @@ import com.danihg.calypso.camera.models.CameraViewModel
 import com.danihg.calypso.camera.models.OverlaysSettingsViewModel
 import com.danihg.calypso.camera.models.SharedProfileViewModel
 import com.danihg.calypso.camera.sources.CameraCalypsoSource
+import com.danihg.calypso.constants.ACTION_START_RECORD
+import com.danihg.calypso.constants.ACTION_STOP_RECORD
+import com.danihg.calypso.constants.EXTRA_PATH
+import com.danihg.calypso.services.CameraService
+import com.danihg.calypso.utils.storage.StorageUtils
 import com.google.android.material.button.MaterialButton
 import com.pedro.encoder.input.sources.audio.MicrophoneSource
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class SettingsFragment : Fragment(R.layout.fragment_settings) {
 
@@ -196,6 +206,114 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
 
         btnReplays.setOnClickListener {
             settingsVm.togglePlaceholder()
+        }
+
+        btnReplayOption1.setOnClickListener {
+            val isReplay = cameraViewModel.isReplayRecording
+            val isManual = genericStream.isRecording && !isReplay
+            val cameraControls = parentFragmentManager
+                .findFragmentById(R.id.controls_container) as? CameraControlsFragment
+            val sessionId = StorageUtils.currentSessionId
+
+            Log.d("SettingsFragment", "🔘 clicked → isReplay=$isReplay isManual=$isManual, sessionId=$sessionId")
+            if (sessionId == null) {
+                Log.e("SettingsFragment", "¡No hay sessionId!, abortando clip")
+                return@setOnClickListener
+            }
+
+            // ① Detener ghost o manual sin borrar
+            if (isReplay) {
+                Log.d("SettingsFragment", "1️⃣ pauseReplay()")
+                val tempPath = cameraControls?.pauseReplay()
+                Log.d("SettingsFragment", "   pauseReplay() devolvió tempPath=$tempPath, exists=${tempPath?.let { File(it).exists() }}")
+            } else if (isManual) {
+                Log.d("SettingsFragment", "1️⃣ stopManualRecord()")
+                Intent(requireContext(), CameraService::class.java).apply {
+                    action = ACTION_STOP_RECORD
+                }.also { ContextCompat.startForegroundService(requireContext(), it) }
+            } else {
+                Log.d("SettingsFragment", "⚠️ No había grabación activa, skip")
+                return@setOnClickListener
+            }
+
+            // directorio Calypso
+            val calypsoDir = StorageUtils.getTempRecordFile().parentFile!!
+
+            // ② Delay mayor para ghost (esperar a que el servicio renombre/termine de escribir)
+            val delayMs = if (isReplay) 2000L else 3000L
+            Log.d("SettingsFragment", "⏱ lanzando clipping en background tras $delayMs ms")
+            Handler(Looper.getMainLooper()).postDelayed({
+                Thread {
+                    try {
+                        // ▶️ Determinar fichero de entrada
+                        val inputFile: File? = when {
+                            // Ghost: buscamos el fichero final que el servicio haya creado
+                            isReplay -> calypsoDir.listFiles()
+                                ?.filter { it.name.startsWith("${sessionId}_") && it.name.endsWith(".mp4") }
+                                ?.maxByOrNull { it.lastModified() }
+                                .also { Log.d("SettingsFragment",
+                                    "   [ghost] candidates=${calypsoDir.listFiles()?.map { it.name }} → selected=${it?.name}") }
+                            // Manual: igual que antes
+                            isManual -> calypsoDir.listFiles()
+                                ?.firstOrNull { it.name.startsWith("${sessionId}_") && it.name.endsWith(".mp4") }
+                            else -> null
+                        }
+
+                        if (inputFile == null || !inputFile.exists()) {
+                            Log.e("SettingsFragment", "❌ No encontré entrada para clip: $inputFile")
+                            return@Thread
+                        }
+                        Log.d("SettingsFragment", "▶️ inputFile=${inputFile.absolutePath}, size=${inputFile.length()}")
+
+                        // ➤ Creamos destino
+                        val stopStamp = SimpleDateFormat("HHmmss", Locale.getDefault()).format(Date())
+                        val finalClip = File(calypsoDir, "${sessionId}_$stopStamp.mp4")
+                        Log.d("SettingsFragment", "   destinoClip=${finalClip.name}")
+
+                        // ➤ Recortamos últimos 10s
+                        val ok = StorageUtils.clipLastTenSeconds(
+                            inputFile.absolutePath,
+                            finalClip.absolutePath,
+                            10_000
+                        )
+                        Log.d("SettingsFragment", "   clipLastTenSeconds ok=$ok, existsDestino=${finalClip.exists()}")
+
+                        // ③ Vuelco UI
+                        Handler(Looper.getMainLooper()).post {
+                            if (ok && finalClip.exists()) {
+                                Log.d("SettingsFragment", "🎬 Clip generado: ${finalClip.absolutePath}")
+                                if (isReplay) {
+                                    Log.d("SettingsFragment", "3a️⃣ replay clip → borrar original ghost")
+                                    inputFile.delete().also {
+                                        Log.d("SettingsFragment", "   ghost eliminado, exists=${inputFile.exists()}")
+                                    }
+                                } else {
+                                    Log.d("SettingsFragment", "3b️⃣ manual clip → conservar original")
+                                }
+                            } else {
+                                Log.e("SettingsFragment", "❌ Falló clip o destino no existe")
+                            }
+
+                            // ④ Reiniciar modo (ghost no debe alterar btnRecord)
+                            if (isReplay) {
+                                Log.d("SettingsFragment", "4️⃣ restartReplay()")
+                                cameraControls?.startReplay()
+                                cameraControls?.syncButtonStates()  // forzamos refresco UI
+                            } else {
+                                Log.d("SettingsFragment", "4️⃣ restartManualRecord()")
+                                // nueva sesión para manual
+                                StorageUtils.generateSessionId()
+                                Intent(requireContext(), CameraService::class.java).apply {
+                                    action = ACTION_START_RECORD
+                                    putExtra(EXTRA_PATH, StorageUtils.getTempRecordFile().absolutePath)
+                                }.also { ContextCompat.startForegroundService(requireContext(), it) }
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e("SettingsFragment", "💥 Error haciendo clip", e)
+                    }
+                }.start()
+            }, delayMs)
         }
 
         // —————————————————————————

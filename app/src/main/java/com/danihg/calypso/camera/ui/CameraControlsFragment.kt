@@ -220,7 +220,7 @@ class CameraControlsFragment : Fragment(R.layout.fragment_camera_controls) {
     }
 
     /** Lanza una grabación “fantasma” para replay. */
-    private fun startReplay() {
+    fun startReplay() {
         if (genericStream.isRecording || cameraViewModel.isReplayRecording){
             Log.d("CameraControls", "startReplay(): ya había grabación o replay activo, skip")
             return
@@ -241,8 +241,37 @@ class CameraControlsFragment : Fragment(R.layout.fragment_camera_controls) {
         syncButtonStates()
     }
 
+    /**
+     * Pausa la grabación de replay sin borrar el fichero temporal,
+     * devolviendo la ruta del fichero para poder hacer el clip.
+     */
+    fun pauseReplay(): String? {
+        if (!cameraViewModel.isReplayRecording) {
+            Log.d("CameraControls", "pauseReplay(): no había replay activo, skip")
+            return null
+        }
+        Log.d("CameraControls", "pauseReplay(): deteniendo replay (sin borrar fichero) session=${cameraViewModel.replaySessionId}")
+        // 1) Pido al servicio que pare la grabación
+        val ctx = requireContext()
+        val intent = Intent(ctx, CameraService::class.java).apply {
+            action = ACTION_STOP_RECORD
+        }
+        ContextCompat.startForegroundService(ctx, intent)
+        // 2) Recupero la ruta del fichero temporal
+        val tempPath = cameraViewModel.replayFilePath
+        Log.d("CameraControls", "pauseReplay(): tempPath=$tempPath, exists=${tempPath?.let { File(it).exists() }}")
+        // 3) Limpio el estado interno (pero no borro el fichero)
+        cameraViewModel.replaySessionId = null
+        cameraViewModel.replayFilePath  = null
+        cameraViewModel.isReplayRecording = false
+        // 4) Actualizo la UI si hace falta
+        syncButtonStates()
+        // 5) Devuelvo la ruta para que SettingsFragment pueda renombrar/clippear
+        return tempPath
+    }
+
     /** Para la grabación de replay y borra el fichero generado. */
-    private fun stopReplay() {
+    fun stopReplay() {
         if (!cameraViewModel.isReplayRecording) {
             Log.d("CameraControls", "stopReplay(): no había replay activo, skip")
             return
@@ -433,7 +462,7 @@ class CameraControlsFragment : Fragment(R.layout.fragment_camera_controls) {
         }
     }
 
-    private fun syncButtonStates() {
+    fun syncButtonStates() {
         Log.d("CameraControls", "syncButtonStates(): isRecording=${genericStream.isRecording}, isStreaming=${genericStream.isStreaming}")
 
         // Record
