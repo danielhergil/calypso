@@ -233,7 +233,7 @@
                 app:iconPadding="0dp"
                 app:iconGravity="textStart"
                 android:alpha="0.6"
-                app:icon="@drawable/ic_add"
+                app:icon="@drawable/ic_save_replay"
                 app:iconSize="24dp"
                 app:backgroundTint="#80FFFFFF"
                 app:cornerRadius="24dp"/>

@@ -39,6 +39,7 @@ import com.danihg.calypso.constants.EXTRA_PATH
 import com.danihg.calypso.services.CameraService
 import com.danihg.calypso.utils.storage.StorageUtils
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.snackbar.Snackbar
 import com.pedro.encoder.input.gl.render.filters.`object`.GifObjectFilterRender
 import com.pedro.encoder.input.sources.audio.MicrophoneSource
 import com.pedro.encoder.input.sources.video.VideoFileSource
@@ -465,6 +466,94 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                         }
                     } catch (e: Exception) {
                         Log.e("SettingsFragment", "💥 Error haciendo clip", e)
+                    }
+                }.start()
+            }, delayMs)
+        }
+
+        btnReplayOption2.setOnClickListener {
+            val cameraControls = parentFragmentManager
+                .findFragmentById(R.id.controls_container) as? CameraControlsFragment
+
+            val isGhostMode = cameraViewModel.isReplayRecording
+            val isManual   = genericStream.isRecording && !isGhostMode
+
+            if (isGhostMode) {
+                cameraControls?.pauseReplaySilent()
+            } else if (isManual) {
+                Intent(requireContext(), CameraService::class.java).apply {
+                    action = ACTION_STOP_RECORD
+                }.also { ContextCompat.startForegroundService(requireContext(), it) }
+            } else {
+                Snackbar.make(requireView(), "No hay grabación activa", Snackbar.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            btnReplayOption2.visibility = View.INVISIBLE
+            spinnerReplay2.visibility    = View.VISIBLE
+
+            val delayMs = if (isGhostMode) 2000L else 3000L
+            Handler(Looper.getMainLooper()).postDelayed({
+                Thread {
+                    val dir     = StorageUtils.getTempRecordFile().parentFile!!
+                    val session = StorageUtils.currentSessionId
+                    val input: File? = when {
+                        isGhostMode -> dir.listFiles()
+                            ?.filter { it.name.startsWith("${session}_") && it.name.endsWith(".mp4") }
+                            ?.maxByOrNull { it.lastModified() }
+                        isManual    -> dir.listFiles()
+                            ?.firstOrNull { it.name.startsWith("${session}_") && it.name.endsWith(".mp4") }
+                        else        -> null
+                    }
+
+                    if (input == null || !input.exists()) {
+                        Handler(Looper.getMainLooper()).post {
+                            spinnerReplay2.visibility    = View.GONE
+                            btnReplayOption2.visibility = View.VISIBLE
+                            Snackbar.make(requireView(),
+                                "Error: no se encontró el archivo fuente",
+                                Snackbar.LENGTH_LONG).show()
+                        }
+                        return@Thread
+                    }
+
+                    val stamp  = SimpleDateFormat("HHmmss", Locale.getDefault()).format(Date())
+                    val output = File(dir, "${session}_$stamp.mp4")
+                    val ok     = StorageUtils.clipLastTenSeconds(
+                        input.absolutePath,
+                        output.absolutePath,
+                        10_000
+                    )
+
+                    Handler(Looper.getMainLooper()).post {
+                        spinnerReplay2.visibility    = View.GONE
+                        btnReplayOption2.visibility = View.VISIBLE
+
+                        if (ok && output.exists()) {
+                            // ➤ reanudar la grabación para poder hacer más clips
+                            if (isGhostMode) {
+                                val deleted = input.delete()
+                                Log.d("SettingsFragment", "Ghost source ${input.name} deleted? $deleted")
+                                cameraControls?.startReplay()
+                            } else {
+                                // genera nueva session y arranca manual record
+                                StorageUtils.generateSessionId()
+                                Intent(requireContext(), CameraService::class.java).apply {
+                                    action = ACTION_START_RECORD
+                                    putExtra(EXTRA_PATH, StorageUtils.getTempRecordFile().absolutePath)
+                                }.also { ctxIntent ->
+                                    ContextCompat.startForegroundService(requireContext(), ctxIntent)
+                                }
+                            }
+
+                            Snackbar.make(requireView(),
+                                "Clip guardado: ${output.name}",
+                                Snackbar.LENGTH_LONG).show()
+                        } else {
+                            Snackbar.make(requireView(),
+                                "Error al guardar el clip",
+                                Snackbar.LENGTH_LONG).show()
+                        }
                     }
                 }.start()
             }, delayMs)
