@@ -190,10 +190,11 @@
         android:layout_marginBottom="96dp">
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnReplayOption1"
+            android:id="@+id/btnReplayOption3"
             style="@style/Widget.MaterialComponents.Button"
             android:layout_width="48dp"
             android:layout_height="48dp"
+            android:layout_marginTop="4dp"
             android:alpha="0.6"
             app:iconPadding="0dp"
             app:iconGravity="textStart"
@@ -217,15 +218,14 @@
             app:cornerRadius="24dp"/>
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnReplayOption3"
+            android:id="@+id/btnReplayOption1"
             style="@style/Widget.MaterialComponents.Button"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:layout_marginTop="4dp"
             android:alpha="0.6"
             app:iconPadding="0dp"
             app:iconGravity="textStart"
-            app:icon="@drawable/ic_add"
+            app:icon="@drawable/ic_play_replay"
             app:iconSize="24dp"
             app:backgroundTint="#80FFFFFF"
             app:cornerRadius="24dp"/>
