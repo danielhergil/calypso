@@ -18,6 +18,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.widget.FrameLayout
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.RelativeLayout
 import android.widget.SeekBar
 import android.widget.TextView
@@ -111,6 +112,10 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
     private lateinit var btnReplayOption2: MaterialButton
     private lateinit var btnReplayOption3: MaterialButton
 
+    private lateinit var spinnerReplay1: ProgressBar
+    private lateinit var spinnerReplay2: ProgressBar
+    private lateinit var spinnerReplay3: ProgressBar
+
     private val replayTransition by lazy { GifObjectFilterRender() }
 
 
@@ -150,12 +155,20 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
 
         btnReplays       = view.findViewById(R.id.btnReplays)
         replayOptionsContainer    = view.findViewById(R.id.replay_options_container)
+
+        spinnerReplay1 = view.findViewById(R.id.spinnerReplay1)
+        spinnerReplay2 = view.findViewById(R.id.spinnerReplay2)
+        spinnerReplay3 = view.findViewById(R.id.spinnerReplay3)
+
         btnReplayOption1          = view.findViewById(R.id.btnReplayOption1)
         btnReplayOption2          = view.findViewById(R.id.btnReplayOption2)
         btnReplayOption3          = view.findViewById(R.id.btnReplayOption3)
 
         btnReplays.visibility = View.GONE
         replayOptionsContainer.visibility = View.GONE
+
+        listOf(spinnerReplay1, spinnerReplay2, spinnerReplay3).forEach { it.visibility = View.GONE }
+        listOf(btnReplayOption1, btnReplayOption2, btnReplayOption3).forEach { it.isEnabled = true }
 
 
         val root = requireActivity().findViewById<FrameLayout>(R.id.overlays_container)
@@ -255,6 +268,15 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
             // ② Delay mayor para ghost (esperar a que el servicio renombre/termine de escribir)
             val delayMs = if (isGhostMode) 2000L else 3000L
             Log.d("SettingsFragment", "⏱ lanzando clipping en background tras $delayMs ms")
+
+            val replayButtons  = listOf(btnReplayOption1, btnReplayOption2, btnReplayOption3)
+            val replaySpinners = listOf(spinnerReplay1,   spinnerReplay2,   spinnerReplay3)
+
+            // bloquear –> ocultamos botones
+            replayButtons.forEach  { it.visibility = View.INVISIBLE }
+            // mostrar –> sólo vemos el spinner en su lugar
+            replaySpinners.forEach { it.visibility = View.VISIBLE }
+
             Handler(Looper.getMainLooper()).postDelayed({
                 Thread {
                     try {
@@ -355,7 +377,11 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                                                     loopMode = false,
                                                     onFinish = {
                                                         // D) Restaurar cámara
-                                                        Handler(Looper.getMainLooper()).post { restoreCamera() }
+                                                        Handler(Looper.getMainLooper()).post {
+                                                            replaySpinners.forEach { it.visibility = View.GONE }
+                                                            replayButtons.forEach  { it.visibility = View.VISIBLE }
+                                                            restoreCamera()
+                                                        }
                                                     }
                                                 ))
                                             }
@@ -421,7 +447,11 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                                                     loopMode = false,
                                                     onFinish = {
                                                         // D) Restaurar y reiniciar manual
-                                                        Handler(Looper.getMainLooper()).post { restoreAndRestart() }
+                                                        Handler(Looper.getMainLooper()).post {
+                                                            replaySpinners.forEach { it.visibility = View.GONE }
+                                                            replayButtons.forEach  { it.visibility = View.VISIBLE }
+                                                            restoreAndRestart()
+                                                        }
                                                     }
                                                 ))
                                             }

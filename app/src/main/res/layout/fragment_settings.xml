@@ -191,55 +191,100 @@
             <LinearLayout
                 android:id="@+id/replay_options_container"
                 android:orientation="horizontal"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="56dp"
                 android:layout_marginStart="8dp"
                 android:visibility="gone">
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnReplayOption1"
-                    style="@style/Widget.MaterialComponents.Button"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:layout_marginStart="8dp"
-                    android:alpha="0.6"
-                    app:icon="@drawable/ic_play_replay"
-                    app:iconTint="@color/black"
-                    app:iconSize="24dp"
-                    app:iconPadding="0dp"
-                    app:iconGravity="textStart"
-                    app:backgroundTint="#80FFFFFF"
-                    app:cornerRadius="24dp"/>
+                <FrameLayout
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:layout_marginStart="8dp">
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnReplayOption2"
-                    style="@style/Widget.MaterialComponents.Button"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:layout_marginStart="8dp"
-                    android:alpha="0.6"
-                    app:icon="@drawable/ic_add"
-                    app:iconTint="@color/black"
-                    app:iconSize="24dp"
-                    app:iconPadding="0dp"
-                    app:iconGravity="textStart"
-                    app:backgroundTint="#80FFFFFF"
-                    app:cornerRadius="24dp"/>
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnReplayOption1"
+                        style="@style/Widget.MaterialComponents.Button"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:layout_marginStart="8dp"
+                        android:alpha="0.6"
+                        app:icon="@drawable/ic_play_replay"
+                        app:iconTint="@color/black"
+                        app:iconSize="24dp"
+                        app:iconPadding="0dp"
+                        app:iconGravity="textStart"
+                        app:backgroundTint="#80FFFFFF"
+                        app:cornerRadius="24dp"/>
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnReplayOption3"
-                    style="@style/Widget.MaterialComponents.Button"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:layout_marginStart="8dp"
-                    android:alpha="0.6"
-                    app:icon="@drawable/ic_add"
-                    app:iconTint="@color/black"
-                    app:iconSize="24dp"
-                    app:iconPadding="0dp"
-                    app:iconGravity="textStart"
-                    app:backgroundTint="#80FFFFFF"
-                    app:cornerRadius="24dp"/>
+                    <ProgressBar
+                        android:id="@+id/spinnerReplay1"
+                        style="?android:attr/progressBarStyleLarge"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_gravity="center"
+                        android:indeterminateTint="@color/calypso_red"
+                        android:visibility="gone"/>
+                </FrameLayout>
+
+                <FrameLayout
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:layout_marginStart="8dp">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnReplayOption2"
+                        style="@style/Widget.MaterialComponents.Button"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:layout_marginStart="8dp"
+                        android:alpha="0.6"
+                        app:icon="@drawable/ic_add"
+                        app:iconTint="@color/black"
+                        app:iconSize="24dp"
+                        app:iconPadding="0dp"
+                        app:iconGravity="textStart"
+                        app:backgroundTint="#80FFFFFF"
+                        app:cornerRadius="24dp"/>
+
+                    <ProgressBar
+                        android:id="@+id/spinnerReplay2"
+                        style="?android:attr/progressBarStyleLarge"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_gravity="center"
+                        android:indeterminateTint="@color/calypso_red"
+                        android:visibility="gone"/>
+                </FrameLayout>
+
+                <FrameLayout
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:layout_marginStart="8dp">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnReplayOption3"
+                        style="@style/Widget.MaterialComponents.Button"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:layout_marginStart="8dp"
+                        android:alpha="0.6"
+                        app:icon="@drawable/ic_add"
+                        app:iconTint="@color/black"
+                        app:iconSize="24dp"
+                        app:iconPadding="0dp"
+                        app:iconGravity="textStart"
+                        app:backgroundTint="#80FFFFFF"
+                        app:cornerRadius="24dp"/>
+
+                    <ProgressBar
+                        android:id="@+id/spinnerReplay3"
+                        style="?android:attr/progressBarStyleLarge"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_gravity="center"
+                        android:indeterminateTint="@color/calypso_red"
+                        android:visibility="gone"/>
+                </FrameLayout>
             </LinearLayout>
         </LinearLayout>
     </LinearLayout>

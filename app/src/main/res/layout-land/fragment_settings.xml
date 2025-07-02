@@ -179,6 +179,7 @@
          2) Contenedor “±” independiente que flota sobre btnSettings
          (hermano de settings_menu, jamás lo desplaza)
          ————————————————————————————————————————— -->
+    <!-- 2) Contenedor de opciones de replay (aparece al hacer toggle) -->
     <LinearLayout
         android:id="@+id/replay_options_container"
         android:orientation="vertical"
@@ -186,49 +187,95 @@
         android:layout_height="wrap_content"
         android:visibility="gone"
         android:layout_gravity="bottom|end"
-        android:layout_marginEnd="100dp"
+        android:layout_marginEnd="94dp"
         android:layout_marginBottom="96dp">
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnReplayOption3"
-            style="@style/Widget.MaterialComponents.Button"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginTop="4dp"
-            android:alpha="0.6"
-            app:iconPadding="0dp"
-            app:iconGravity="textStart"
-            app:icon="@drawable/ic_add"
-            app:iconSize="24dp"
-            app:backgroundTint="#80FFFFFF"
-            app:cornerRadius="24dp"/>
+        <!-- Opción 3 -->
+        <FrameLayout
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:layout_marginTop="4dp">
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnReplayOption2"
-            style="@style/Widget.MaterialComponents.Button"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginTop="4dp"
-            android:alpha="0.6"
-            app:iconPadding="0dp"
-            app:iconGravity="textStart"
-            app:icon="@drawable/ic_add"
-            app:iconSize="24dp"
-            app:backgroundTint="#80FFFFFF"
-            app:cornerRadius="24dp"/>
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnReplayOption3"
+                style="@style/Widget.MaterialComponents.Button"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                app:iconPadding="0dp"
+                app:iconGravity="textStart"
+                android:alpha="0.6"
+                app:icon="@drawable/ic_add"
+                app:iconSize="24dp"
+                app:backgroundTint="#80FFFFFF"
+                app:cornerRadius="24dp"/>
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnReplayOption1"
-            style="@style/Widget.MaterialComponents.Button"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:alpha="0.6"
-            app:iconPadding="0dp"
-            app:iconGravity="textStart"
-            app:icon="@drawable/ic_play_replay"
-            app:iconSize="24dp"
-            app:backgroundTint="#80FFFFFF"
-            app:cornerRadius="24dp"/>
+            <ProgressBar
+                android:id="@+id/spinnerReplay3"
+                style="?android:attr/progressBarStyleLarge"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center"
+                android:indeterminateTint="@color/calypso_red"
+                android:visibility="gone"/>
+        </FrameLayout>
+
+        <!-- Opción 2 -->
+        <FrameLayout
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:layout_marginTop="4dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnReplayOption2"
+                style="@style/Widget.MaterialComponents.Button"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                app:iconPadding="0dp"
+                app:iconGravity="textStart"
+                android:alpha="0.6"
+                app:icon="@drawable/ic_add"
+                app:iconSize="24dp"
+                app:backgroundTint="#80FFFFFF"
+                app:cornerRadius="24dp"/>
+
+            <ProgressBar
+                android:id="@+id/spinnerReplay2"
+                style="?android:attr/progressBarStyleLarge"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center"
+                android:indeterminateTint="@color/calypso_red"
+                android:visibility="gone"/>
+        </FrameLayout>
+
+        <!-- Opción 1 -->
+        <FrameLayout
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:layout_marginTop="4dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnReplayOption1"
+                style="@style/Widget.MaterialComponents.Button"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                app:iconPadding="0dp"
+                app:iconGravity="textStart"
+                android:alpha="0.6"
+                app:icon="@drawable/ic_play_replay"
+                app:iconSize="24dp"
+                app:backgroundTint="#80FFFFFF"
+                app:cornerRadius="24dp"/>
+
+            <ProgressBar
+                android:id="@+id/spinnerReplay1"
+                style="?android:attr/progressBarStyleLarge"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center"
+                android:indeterminateTint="@color/calypso_red"
+                android:visibility="gone"/>
+        </FrameLayout>
     </LinearLayout>
 
     <!-- —————————————————————————————————————————
