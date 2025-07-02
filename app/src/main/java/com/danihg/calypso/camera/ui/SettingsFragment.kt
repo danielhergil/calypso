@@ -8,6 +8,7 @@ import android.content.res.ColorStateList
 import android.content.res.Configuration
 import android.graphics.Color
 import android.hardware.camera2.CameraCharacteristics
+import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -36,7 +37,9 @@ import com.danihg.calypso.constants.EXTRA_PATH
 import com.danihg.calypso.services.CameraService
 import com.danihg.calypso.utils.storage.StorageUtils
 import com.google.android.material.button.MaterialButton
+import com.pedro.encoder.input.gl.render.filters.`object`.GifObjectFilterRender
 import com.pedro.encoder.input.sources.audio.MicrophoneSource
+import com.pedro.encoder.input.sources.video.VideoFileSource
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -106,6 +109,8 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
     private lateinit var btnReplayOption1: MaterialButton
     private lateinit var btnReplayOption2: MaterialButton
     private lateinit var btnReplayOption3: MaterialButton
+
+    private val replayTransition by lazy { GifObjectFilterRender() }
 
 
     @SuppressLint("ClickableViewAccessibility")
@@ -209,20 +214,27 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         }
 
         btnReplayOption1.setOnClickListener {
-            val isReplay = cameraViewModel.isReplayRecording
-            val isManual = genericStream.isRecording && !isReplay
+            val isGhostMode = cameraViewModel.isReplayRecording
+            val isManual   = genericStream.isRecording && !isGhostMode
+
+            Log.d("SettingsFragment","clicked → ghost=$isGhostMode manual=$isManual")
+
+            if (!isGhostMode && !isManual) {
+                Log.d("SettingsFragment","⚠️ No había grabación activa, skip")
+                return@setOnClickListener
+            }
             val cameraControls = parentFragmentManager
                 .findFragmentById(R.id.controls_container) as? CameraControlsFragment
             val sessionId = StorageUtils.currentSessionId
 
-            Log.d("SettingsFragment", "🔘 clicked → isReplay=$isReplay isManual=$isManual, sessionId=$sessionId")
+            Log.d("SettingsFragment", "🔘 clicked → isReplay=$isGhostMode isManual=$isManual, sessionId=$sessionId")
             if (sessionId == null) {
                 Log.e("SettingsFragment", "¡No hay sessionId!, abortando clip")
                 return@setOnClickListener
             }
 
             // ① Detener ghost o manual sin borrar
-            if (isReplay) {
+            if (isGhostMode) {
                 Log.d("SettingsFragment", "1️⃣ pauseReplay()")
                 val tempPath = cameraControls?.pauseReplaySilent()
                 Log.d("SettingsFragment", "   pauseReplay() devolvió tempPath=$tempPath, exists=${tempPath?.let { File(it).exists() }}")
@@ -240,20 +252,18 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
             val calypsoDir = StorageUtils.getTempRecordFile().parentFile!!
 
             // ② Delay mayor para ghost (esperar a que el servicio renombre/termine de escribir)
-            val delayMs = if (isReplay) 2000L else 3000L
+            val delayMs = if (isGhostMode) 2000L else 3000L
             Log.d("SettingsFragment", "⏱ lanzando clipping en background tras $delayMs ms")
             Handler(Looper.getMainLooper()).postDelayed({
                 Thread {
                     try {
                         // ▶️ Determinar fichero de entrada
                         val inputFile: File? = when {
-                            // Ghost: buscamos el fichero final que el servicio haya creado
-                            isReplay -> calypsoDir.listFiles()
+                            isGhostMode -> calypsoDir.listFiles()
                                 ?.filter { it.name.startsWith("${sessionId}_") && it.name.endsWith(".mp4") }
                                 ?.maxByOrNull { it.lastModified() }
                                 .also { Log.d("SettingsFragment",
                                     "   [ghost] candidates=${calypsoDir.listFiles()?.map { it.name }} → selected=${it?.name}") }
-                            // Manual: igual que antes
                             isManual -> calypsoDir.listFiles()
                                 ?.firstOrNull { it.name.startsWith("${sessionId}_") && it.name.endsWith(".mp4") }
                             else -> null
@@ -263,12 +273,10 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                             Log.e("SettingsFragment", "❌ No encontré entrada para clip: $inputFile")
                             return@Thread
                         }
-                        Log.d("SettingsFragment", "▶️ inputFile=${inputFile.absolutePath}, size=${inputFile.length()}")
 
                         // ➤ Creamos destino
                         val stopStamp = SimpleDateFormat("HHmmss", Locale.getDefault()).format(Date())
                         val finalClip = File(calypsoDir, "${sessionId}_$stopStamp.mp4")
-                        Log.d("SettingsFragment", "   destinoClip=${finalClip.name}")
 
                         // ➤ Recortamos últimos 10s
                         val ok = StorageUtils.clipLastTenSeconds(
@@ -276,37 +284,120 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                             finalClip.absolutePath,
                             10_000
                         )
-                        Log.d("SettingsFragment", "   clipLastTenSeconds ok=$ok, existsDestino=${finalClip.exists()}")
 
-                        // ③ Vuelco UI
+                        // ① Guardamos referencias antes de cambiar de source
+                        val oldSource    = genericStream.videoSource as? CameraCalypsoSource
+                        val savedZoom    = oldSource?.getZoom()
+                        val savedEvIndex = oldSource?.getExposureCompensation()
+                        val savedIsoProg = settingsVm.isoSeekProgress.value ?: -1
+                        val savedWbProg  = settingsVm.wbSeekProgress.value ?: -1
+                        val savedEtProg  = settingsVm.etSeekProgress.value ?: -1
+
+                        // **Referencia al ghost que queremos borrar después**
+                        val ghostFile = inputFile
+
+                        // ④ Volvemos al hilo de UI para lanzar la reproducción
                         Handler(Looper.getMainLooper()).post {
-                            if (ok && finalClip.exists()) {
-                                Log.d("SettingsFragment", "🎬 Clip generado: ${finalClip.absolutePath}")
-                                if (isReplay) {
-                                    Log.d("SettingsFragment", "3a️⃣ replay clip → borrar original ghost")
-                                    inputFile.delete().also {
-                                        Log.d("SettingsFragment", "   ghost eliminado, exists=${inputFile.exists()}")
-                                    }
-                                } else {
-                                    Log.d("SettingsFragment", "3b️⃣ manual clip → conservar original")
-                                }
-                            } else {
-                                Log.e("SettingsFragment", "❌ Falló clip o destino no existe")
-                            }
+                            if (ok && finalClip.exists() && isGhostMode && oldSource != null) {
+                                // ── Ghost branch ──
+                                val clipUri = Uri.fromFile(finalClip)
+                                genericStream.changeVideoSource(
+                                    VideoFileSource(
+                                        context  = requireContext(),
+                                        path     = clipUri,
+                                        loopMode = false,
+                                        onFinish = {
+                                            // 1) Borra el ghost en hilo de decoder
+                                            val deleted = ghostFile.delete()
+                                            Log.d("SettingsFragment", "   ghost ${ghostFile.name} deleted? $deleted")
 
-                            // ④ Reiniciar modo (ghost no debe alterar btnRecord)
-                            if (isReplay) {
-                                Log.d("SettingsFragment", "4️⃣ restartReplay()")
-                                cameraControls?.startReplay()
-                                cameraControls?.syncButtonStates()  // forzamos refresco UI
-                            } else {
-                                Log.d("SettingsFragment", "4️⃣ restartManualRecord()")
-                                // nueva sesión para manual
-                                StorageUtils.generateSessionId()
-                                Intent(requireContext(), CameraService::class.java).apply {
-                                    action = ACTION_START_RECORD
-                                    putExtra(EXTRA_PATH, StorageUtils.getTempRecordFile().absolutePath)
-                                }.also { ContextCompat.startForegroundService(requireContext(), it) }
+                                            // 2) UI: vuelve a cámara, relanza ghost y reaplica ajustes
+                                            Handler(Looper.getMainLooper()).post {
+                                                genericStream.getGlInterface().removeFilter(replayTransition)
+                                                genericStream.changeVideoSource(oldSource)
+                                                cameraControls?.startReplay()
+                                                cameraControls?.syncButtonStates()
+                                                Handler(Looper.getMainLooper()).postDelayed({
+                                                    savedZoom?.let   { oldSource.setZoom(it) }
+                                                    savedEvIndex?.let { oldSource.setExposureCompensation(it) }
+                                                    if (savedIsoProg < 0) oldSource.enableAutoISO()
+                                                    else {
+                                                        val minIso = oldSource.getMinISO()
+                                                        oldSource.setISO(minIso + savedIsoProg * 100)
+                                                    }
+                                                    if (savedWbProg < 0) oldSource.enableAutoWhiteBalance(CameraCharacteristics.CONTROL_AWB_MODE_AUTO)
+                                                    else {
+                                                        val modes = oldSource.getAutoWhiteBalanceModesAvailable()
+                                                        if (savedWbProg in modes.indices) oldSource.enableAutoWhiteBalance(modes[savedWbProg])
+                                                    }
+                                                    val etDenoms = arrayOf(30,40,50,60,100,120,250,500)
+                                                    if (savedEtProg in etDenoms.indices) {
+                                                        val ns = 1_000_000_000L / etDenoms[savedEtProg]
+                                                        oldSource.setExposureTime(ns)
+                                                    }
+                                                }, 100)
+                                            }
+                                        }
+                                    )
+                                )
+                            }
+                            else if (ok && finalClip.exists() && isManual && oldSource != null) {
+                                // ── Manual branch ──: reproducir clip, luego volver a cámara,
+                                //    reaplicar ajustes y arrancar grabación manual
+                                val clipUri = Uri.fromFile(finalClip)
+                                genericStream.changeVideoSource(
+                                    VideoFileSource(
+                                        context  = requireContext(),
+                                        path     = clipUri,
+                                        loopMode = false,
+                                        onFinish = {
+                                            Handler(Looper.getMainLooper()).post {
+                                                // 1) Volvemos al source de cámara
+                                                genericStream.changeVideoSource(oldSource)
+
+                                                // 2) Reaplicamos ajustes guardados
+                                                Handler(Looper.getMainLooper()).postDelayed({
+                                                    savedZoom?.let   { oldSource.setZoom(it) }
+                                                    savedEvIndex?.let { oldSource.setExposureCompensation(it) }
+
+                                                    if (savedIsoProg < 0) {
+                                                        oldSource.enableAutoISO()
+                                                    } else {
+                                                        val minIso = oldSource.getMinISO()
+                                                        oldSource.setISO(minIso + savedIsoProg * 100)
+                                                    }
+
+                                                    if (savedWbProg < 0) {
+                                                        oldSource.enableAutoWhiteBalance(CameraCharacteristics.CONTROL_AWB_MODE_AUTO)
+                                                    } else {
+                                                        val modes = oldSource.getAutoWhiteBalanceModesAvailable()
+                                                        if (savedWbProg in modes.indices) {
+                                                            oldSource.enableAutoWhiteBalance(modes[savedWbProg])
+                                                        }
+                                                    }
+
+                                                    val etDenoms = arrayOf(30,40,50,60,100,120,250,500)
+                                                    if (savedEtProg in etDenoms.indices) {
+                                                        val ns = 1_000_000_000L / etDenoms[savedEtProg]
+                                                        oldSource.setExposureTime(ns)
+                                                    }
+                                                }, 100)
+
+                                                // 3) Generamos nueva sesión y arrancamos grabación manual
+                                                StorageUtils.generateSessionId()
+                                                Intent(requireContext(), CameraService::class.java).apply {
+                                                    action = ACTION_START_RECORD
+                                                    putExtra(EXTRA_PATH, StorageUtils.getTempRecordFile().absolutePath)
+                                                }.also { ctxIntent ->
+                                                    ContextCompat.startForegroundService(requireContext(), ctxIntent)
+                                                }
+                                            }
+                                        }
+                                    )
+                                )
+                            }
+                            else {
+                                Log.e("SettingsFragment", "❌ Falló clip o destino no existe")
                             }
                         }
                     } catch (e: Exception) {
