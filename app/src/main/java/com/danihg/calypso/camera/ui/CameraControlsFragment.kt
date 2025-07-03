@@ -228,7 +228,7 @@ class CameraControlsFragment : Fragment(R.layout.fragment_camera_controls) {
         Log.d("CameraControls", "startReplay(): iniciando replay")
         val ctx = requireContext()
         val intent = Intent(ctx, CameraService::class.java)
-        val sessionId = StorageUtils.generateSessionId()
+//        val sessionId = StorageUtils.generateSessionId()
         val tempPath = StorageUtils.getTempRecordFile().absolutePath
         intent.action = ACTION_START_RECORD
         intent.putExtra(EXTRA_PATH, tempPath)
@@ -360,7 +360,9 @@ class CameraControlsFragment : Fragment(R.layout.fragment_camera_controls) {
             btnRecord.setIconResource(R.drawable.ic_record_mode)
             btnRecord.iconTint = null
             btnRecord.alpha = 0.5f
-            sessionId = StorageUtils.generateSessionId()
+            val sid = StorageUtils.currentSessionId ?: StorageUtils.generateSessionId()
+            StorageUtils.currentSessionId = sid
+            cameraViewModel.replaySessionId = sid
             val tempPath = StorageUtils.getTempRecordFile().absolutePath
             intent.action = ACTION_START_RECORD
             intent.putExtra(EXTRA_PATH, tempPath)
@@ -437,8 +439,9 @@ class CameraControlsFragment : Fragment(R.layout.fragment_camera_controls) {
             btnStream.iconTint = null
             btnStream.alpha = 0.5f
 
-            // b) Generamos sessionId (opcional)
-            sessionId = StorageUtils.generateSessionId()
+            val sid = StorageUtils.generateSessionId()
+            sessionId = sid
+            cameraViewModel.replaySessionId = sid
 
             // c) Enviamos Intent para arrancar streaming
             intent.action = ACTION_START_STREAM

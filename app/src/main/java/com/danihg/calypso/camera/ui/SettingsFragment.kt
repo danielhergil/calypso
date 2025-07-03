@@ -289,7 +289,11 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                                 .also { Log.d("SettingsFragment",
                                     "   [ghost] candidates=${calypsoDir.listFiles()?.map { it.name }} → selected=${it?.name}") }
                             isManual -> calypsoDir.listFiles()
-                                ?.firstOrNull { it.name.startsWith("${sessionId}_") && it.name.endsWith(".mp4") }
+                                ?.filter { it.name.startsWith("${sessionId}_")
+                                        && it.name.endsWith(".mp4")
+                                        && !it.name.endsWith("_rep.mp4")  // excluye los clips anteriores
+                                }
+                                ?.maxByOrNull { it.lastModified() }
                             else -> null
                         }
 
@@ -300,7 +304,7 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
 
                         // ➤ Creamos destino
                         val stopStamp = SimpleDateFormat("HHmmss", Locale.getDefault()).format(Date())
-                        val finalClip = File(calypsoDir, "${sessionId}_$stopStamp.mp4")
+                        val finalClip = File(calypsoDir, "${sessionId}_${stopStamp}_rep.mp4")
 
                         // ➤ Recortamos últimos 10s
                         val ok = StorageUtils.clipLastTenSeconds(
@@ -435,7 +439,7 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                                             oldSource.setExposureTime(1_000_000_000L / etDenoms[savedEtProg])
                                         }
                                         // Nueva sesión y arranque manual
-                                        StorageUtils.generateSessionId()
+//                                        StorageUtils.generateSessionId()
                                         Intent(requireContext(), CameraService::class.java).apply {
                                             action = ACTION_START_RECORD
                                             putExtra(EXTRA_PATH, StorageUtils.getTempRecordFile().absolutePath)
@@ -522,7 +526,12 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                             ?.filter { it.name.startsWith("${session}_") && it.name.endsWith(".mp4") }
                             ?.maxByOrNull { it.lastModified() }
                         isManual    -> dir.listFiles()
-                            ?.firstOrNull { it.name.startsWith("${session}_") && it.name.endsWith(".mp4") }
+                            ?.filter { f ->
+                                f.name.startsWith("${session}_")
+                                        && f.extension == "mp4"
+                                        && !f.nameWithoutExtension.endsWith("_rep")
+                            }
+                            ?.maxByOrNull { it.lastModified() }
                         else        -> null
                     }
 
@@ -538,7 +547,7 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                     }
 
                     val stamp  = SimpleDateFormat("HHmmss", Locale.getDefault()).format(Date())
-                    val output = File(dir, "${session}_$stamp.mp4")
+                    val output = File(dir, "${session}_${stamp}_rep.mp4")
                     val ok     = StorageUtils.clipLastTenSeconds(
                         input.absolutePath,
                         output.absolutePath,
@@ -557,7 +566,7 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                                 cameraControls?.startReplay()
                             } else {
                                 // genera nueva session y arranca manual record
-                                StorageUtils.generateSessionId()
+//                                StorageUtils.generateSessionId()
                                 Intent(requireContext(), CameraService::class.java).apply {
                                     action = ACTION_START_RECORD
                                     putExtra(EXTRA_PATH, StorageUtils.getTempRecordFile().absolutePath)
@@ -578,6 +587,32 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                 }.start()
             }, delayMs)
         }
+
+        btnReplayOption3.setOnClickListener {
+            // 1) Guarda estados previos (ya tienes esas vars: prevScoreboardEnabled…)
+            prevScoreboardEnabled = overlaysVm.scoreboardEnabled.value ?: false
+            prevLineupEnabled     = overlaysVm.lineupEnabled.value    ?: false
+            prevCoverEnabled      = overlaysVm.coverEnabled.value     ?: false
+            prevFooterEnabled     = overlaysVm.footerEnabled.value    ?: false
+
+            // 2) Deshabilita todos los overlays
+            overlaysVm.setScoreboardEnabled(false)
+            overlaysVm.setLineupEnabled(false)
+            overlaysVm.setCoverEnabled(false)
+            overlaysVm.setFooterEnabled(false)
+
+            // 3) Navega al ReplaysFragment
+            parentFragmentManager.beginTransaction()
+                .replace(R.id.settings_container, ReplaysFragment())
+                .addToBackStack(null)
+                .commit()
+
+            // 4) Oculta el contenedor de overlays
+            requireActivity()
+                .findViewById<FrameLayout>(R.id.overlays_container)
+                .visibility = View.GONE
+        }
+
 
         // —————————————————————————
         // 3.4) Observadores LiveData en settingsVm (igual que antes)

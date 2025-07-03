@@ -19,6 +19,7 @@ import com.danihg.calypso.constants.ACTION_STOP_STREAM
 import com.danihg.calypso.constants.EXTRA_PATH
 import com.danihg.calypso.constants.EXTRA_URL
 import com.danihg.calypso.utils.storage.StorageUtils
+import java.io.File
 
 private const val CHANNEL_ID = "camera_stream"
 private const val NOTIF_ID   = 1
@@ -45,22 +46,28 @@ class CameraService : LifecycleService() {
         intent?.action?.let { action ->
             when (action) {
                 ACTION_START_RECORD -> {
-                    // Extraemos la ruta del fichero temporal donde grabaremos
-                    val path = intent.getStringExtra(EXTRA_PATH)
-                    path?.let {
-                        Log.d("CameraService", "Received ACTION_START_RECORD, path=$path")
-                        genericStream.startRecord(it) { /* callback si quieres manejar eventos */ }
-                        Log.d("CameraService", "After startRecord(), isRecording=${genericStream.isRecording}")
-                        updateNotification("Grabando...")
+                    val path = intent.getStringExtra(EXTRA_PATH) ?: return@let
+                    val tempFile = File(path)
+                    // 1) Si ya existe un temp de la sesión anterior, lo borramos
+                    if (tempFile.exists()) {
+                        Log.d("CameraService", "START_RECORD: borrando temp viejo: $path")
+                        tempFile.delete()
                     }
+                    // 2) Iniciamos la grabación, pasando un listener
+                    genericStream.startRecord(path) { /* aquí recibes el callback si quieres */ }
+                    updateNotification("Grabando...")
                 }
                 ACTION_STOP_RECORD -> {
                     genericStream.stopRecord()
                     // Tras detener la grabación, renombramos el fichero temporal a final
-                    val finalPath = StorageUtils.renameTempToFinal(
+                    val finalFile = StorageUtils.renameTempToFinal(
                         StorageUtils.currentSessionId ?: ""
                     )
-                    updateNotification("Grabación guardada: $finalPath")
+                    if (finalFile != null) {
+                        updateNotification("Grabación guardada: ${finalFile.absolutePath}")
+                    } else {
+                        updateNotification("Error al guardar grabación")
+                    }
                 }
                 ACTION_START_STREAM -> {
                     // Extraemos la URL RTMP para hacer streaming

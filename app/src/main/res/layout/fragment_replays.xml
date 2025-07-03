@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/replays_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/dark_gray">
+
+    <ProgressBar
+        android:id="@+id/progressBar"
+        style="?android:attr/progressBarStyleLarge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:indeterminateTint="@color/calypso_red"
+        android:layout_gravity="center"
+        android:visibility="gone"/>
+
+    <!-- Botón de cerrar (pequeño cuadrado con X) -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnCloseReplaysMenu"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:layout_gravity="top|end"
+        android:layout_margin="16dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:padding="0dp"
+        app:icon="@drawable/ic_close"
+        app:iconTint="@color/WHITE"
+        app:iconGravity="textStart"
+        app:iconPadding="0dp"
+        app:backgroundTint="@android:color/transparent"
+        app:cornerRadius="16dp" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerClips"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginTop="64dp"
+        android:padding="16dp"/>
+
+</FrameLayout>

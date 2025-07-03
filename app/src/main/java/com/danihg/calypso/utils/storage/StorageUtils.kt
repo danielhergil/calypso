@@ -6,7 +6,6 @@ import android.media.MediaFormat
 import android.media.MediaMetadataRetriever
 import android.media.MediaMuxer
 import android.os.Environment
-import android.util.Log
 import java.io.File
 import java.io.IOException
 import java.nio.ByteBuffer
@@ -39,8 +38,7 @@ object StorageUtils {
      * Genera un session ID en el formato "yyyyMMddHHmmss" y lo guarda en currentSessionId.
      */
     fun generateSessionId(): String {
-        val sdf = SimpleDateFormat("yyyyMMddHHmmss", Locale.getDefault())
-        val id = sdf.format(Date())
+        val id = SimpleDateFormat("yyyyMMddHHmmss", Locale.getDefault()).format(Date())
         currentSessionId = id
         return id
     }
@@ -49,7 +47,8 @@ object StorageUtils {
      * Devuelve el File temporal en /Movies/Calypso/temp_record.mp4
      */
     fun getTempRecordFile(): File {
-        return File(getCalypsoDirectory(), TEMP_RECORD_FILENAME)
+        val sid = currentSessionId ?: generateSessionId()
+        return File(getCalypsoDirectory(), "${sid}_temp.mp4")
     }
 
     /**
@@ -57,19 +56,14 @@ object StorageUtils {
      * Devuelve el File final o null si falla.
      */
     fun renameTempToFinal(sessionId: String): File? {
-        val dir = getCalypsoDirectory()
-        val temp = File(dir, TEMP_RECORD_FILENAME)
-        Log.d("StorageUtils", "renameTempToFinal(): buscando temp en ${temp.absolutePath}, existe? ${temp.exists()}")
-        if (!temp.exists()) return null
-
-        val stopStamp = SimpleDateFormat("HHmmss", Locale.getDefault()).format(Date())
-        val finalName = "${sessionId}_$stopStamp.mp4"
-        val finalFile = File(dir, finalName)
-
-        val success = temp.renameTo(finalFile)
-        Log.d("StorageUtils", "renameTempToFinal(): renombrar a ${finalFile.absolutePath}, éxito? $success, final existe? ${finalFile.exists()}")
-
-        return if (success) finalFile else null
+        val temp = File(getCalypsoDirectory(), "${sessionId}_temp.mp4")
+        val timestamp = SimpleDateFormat("HHmmss", Locale.getDefault()).format(Date())
+        val finalFile = File(getCalypsoDirectory(), "${sessionId}_$timestamp.mp4")
+        return if (temp.exists() && temp.renameTo(finalFile)) {
+            finalFile
+        } else {
+            null
+        }
     }
 
     /**
