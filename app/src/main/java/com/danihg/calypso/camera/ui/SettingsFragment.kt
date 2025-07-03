@@ -505,7 +505,7 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                     action = ACTION_STOP_RECORD
                 }.also { ContextCompat.startForegroundService(requireContext(), it) }
             } else {
-                Snackbar.make(requireView(), "No hay grabación activa", Snackbar.LENGTH_SHORT).show()
+                Snackbar.make(requireView(), "No active recording", Snackbar.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
@@ -531,7 +531,7 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                             spinnerReplay2.visibility    = View.GONE
                             btnReplayOption2.visibility = View.VISIBLE
                             Snackbar.make(requireView(),
-                                "Error: no se encontró el archivo fuente",
+                                "Error: source file not found",
                                 Snackbar.LENGTH_LONG).show()
                         }
                         return@Thread
@@ -567,11 +567,11 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                             }
 
                             Snackbar.make(requireView(),
-                                "Clip guardado: ${output.name}",
+                                "Clip saved: ${output.name}",
                                 Snackbar.LENGTH_LONG).show()
                         } else {
                             Snackbar.make(requireView(),
-                                "Error al guardar el clip",
+                                "Error saving the clip",
                                 Snackbar.LENGTH_LONG).show()
                         }
                     }
