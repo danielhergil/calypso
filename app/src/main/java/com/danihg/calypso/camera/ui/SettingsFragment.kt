@@ -320,6 +320,11 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                         // **Referencia al ghost que queremos borrar después**
                         val ghostFile = inputFile
 
+                        val prevScore = overlaysVm.scoreboardEnabled.value ?: false
+                        val prevLine = overlaysVm.lineupEnabled.value    ?: false
+                        val prevCover = overlaysVm.coverEnabled.value     ?: false
+                        val prevFoot  = overlaysVm.footerEnabled.value    ?: false
+
                         // ④ Volvemos al hilo de UI para lanzar la reproducción
                         Handler(Looper.getMainLooper()).post {
                             if (ok && finalClip.exists() && isGhostMode && oldSource != null) {
@@ -356,6 +361,13 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                                     }, 100)
                                 }
 
+
+
+                                overlaysVm.setScoreboardEnabled(false)
+                                overlaysVm.setLineupEnabled(false)
+                                overlaysVm.setCoverEnabled(false)
+                                overlaysVm.setFooterEnabled(false)
+
                                 // A) Transición de entrada
                                 genericStream.changeVideoSource(VideoFileSource(
                                     context  = requireContext(),
@@ -382,6 +394,10 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                                                             replaySpinners.forEach { it.visibility = View.GONE }
                                                             replayButtons.forEach  { it.visibility = View.VISIBLE }
                                                             restoreCamera()
+                                                            if (prevScore) overlaysVm.setScoreboardEnabled(true)
+                                                            if (prevLine ) overlaysVm.setLineupEnabled(true)
+                                                            if (prevCover) overlaysVm.setCoverEnabled(true)
+                                                            if (prevFoot ) overlaysVm.setFooterEnabled(true)
                                                         }
                                                     }
                                                 ))
@@ -452,6 +468,10 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                                                             replaySpinners.forEach { it.visibility = View.GONE }
                                                             replayButtons.forEach  { it.visibility = View.VISIBLE }
                                                             restoreAndRestart()
+                                                            if (prevScore) overlaysVm.setScoreboardEnabled(true)
+                                                            if (prevLine ) overlaysVm.setLineupEnabled(true)
+                                                            if (prevCover) overlaysVm.setCoverEnabled(true)
+                                                            if (prevFoot ) overlaysVm.setFooterEnabled(true)
                                                         }
                                                     }
                                                 ))
