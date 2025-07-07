@@ -74,6 +74,14 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
     private var compositeLineupBmp: Bitmap? = null
     private var isLineupAttached = false
 
+    private var baseCoverBmp: Bitmap? = null
+    private var logo1CoverBmp: Bitmap? = null
+    private var logo2CoverBmp: Bitmap? = null
+
+    private var baseFooterBmp: Bitmap? = null
+    private var logo1FooterBmp: Bitmap? = null
+    private var logo2FooterBmp: Bitmap? = null
+
     private lateinit var submenuOverlays: LinearLayout
     private lateinit var btnOverlaysToggle: MaterialButton
 
@@ -148,7 +156,8 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
             )
 
             if (enabled) {
-                attachFooterOverlay()
+                if (baseFooterBmp != null) reattachFooterFilter()
+                else                       attachFooterOverlay()
             } else if (isFooterAttached) {
                 genericStream.getGlInterface().removeFilter(footerFilter)
                 isFooterAttached = false
@@ -244,7 +253,9 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
                 ColorStateList.valueOf(if (enabled) Color.BLACK else Color.WHITE)
 
             if (enabled) {
-                attachCoverOverlay()
+                // si ya tenemos base descargada, actualizamos; si no, la descargamos
+                if (baseCoverBmp != null) reattachCoverFilter()
+                else               attachCoverOverlay()
             } else if (isCoverAttached) {
                 genericStream.getGlInterface().removeFilter(coverFilter)
                 isCoverAttached = false
@@ -842,27 +853,35 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
 
     private fun attachCoverOverlay() {
         lifecycleScope.launch {
-            val item = vm.covers.value!!.first { it.name == vm.selectedCover.value }
-            val baseBmp = withContext(Dispatchers.IO) { URL(item.build["cover"]!!).downloadBitmap() }
-            val team1   = vm.teams.value!!.first { it.name == vm.selectedTeam1.value }
-            val team2   = vm.teams.value!!.first { it.name == vm.selectedTeam2.value }
-            val logo1   = async(Dispatchers.IO){ URL(team1.logoUrl!!).downloadBitmap() }.await()
-            val logo2   = async(Dispatchers.IO){ URL(team2.logoUrl!!).downloadBitmap() }.await()
+            // 1) Descargar base y logos en background
+            val item   = vm.covers.value!!.first { it.name == vm.selectedCover.value }
+            val base   = withContext(Dispatchers.IO) { URL(item.build["cover"]!!).downloadBitmap() }
+            val team1  = vm.teams.value!!.first { it.name == vm.selectedTeam1.value }
+            val team2  = vm.teams.value!!.first { it.name == vm.selectedTeam2.value }
+            val logo1  = async(Dispatchers.IO){ URL(team1.logoUrl!!).downloadBitmap() }.await()
+            val logo2  = async(Dispatchers.IO){ URL(team2.logoUrl!!).downloadBitmap() }.await()
 
-            // 1) Composición
-            val composite = CoverOverlayGenerator.createCompositeBitmap(
-                base      = baseBmp,
-                logo1     = logo1,
-                logo2     = logo2,
-                label     = coverLabel,
-                teamName1 = team1.name,
-                teamName2 = team2.name
-            )
+            // 2) Guardar para futuros updateOverlay
+            baseCoverBmp   = base
+            logo1CoverBmp  = logo1
+            logo2CoverBmp  = logo2
 
-            // 2) En UI: setImage, escala y addFilter
+            val label = coverLabel
+            val n1    = team1.name
+            val n2    = team2.name
+
+            // 3) Renderizar con updateOverlay en UI
             withContext(Dispatchers.Main) {
-                coverFilter.setImage(composite)
-                applyCoverScaleAndPosition(composite)
+                CoverOverlayGenerator.updateOverlay(
+                    base      = base,
+                    logo1     = logo1,
+                    logo2     = logo2,
+                    label     = label,
+                    teamName1 = n1,
+                    teamName2 = n2,
+                    filter    = coverFilter
+                )
+                applyCoverScaleAndPosition(base)
                 genericStream.getGlInterface().addFilter(coverFilter)
                 isCoverAttached = true
             }
@@ -890,22 +909,53 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
         coverFilter.setPosition(posX, posY)
     }
 
+    private fun reattachCoverFilter() {
+        baseCoverBmp?.let { base ->
+            CoverOverlayGenerator.updateOverlay(
+                base      = base,
+                logo1     = logo1CoverBmp,
+                logo2     = logo2CoverBmp,
+                label     = coverLabel,
+                teamName1 = vm.teams.value!!.first { it.name == vm.selectedTeam1.value }.name,
+                teamName2 = vm.teams.value!!.first { it.name == vm.selectedTeam2.value }.name,
+                filter    = coverFilter
+            )
+            applyCoverScaleAndPosition(base)
+            if (!isCoverAttached) {
+                genericStream.getGlInterface().addFilter(coverFilter)
+                isCoverAttached = true
+            }
+        }
+    }
+
     private fun attachFooterOverlay() {
         lifecycleScope.launch {
             // 1) Descarga todo en background
-            val item    = vm.footers.value!!.first { it.name == vm.selectedFooter.value }
-            val baseBmp = withContext(Dispatchers.IO) {
+            val item      = vm.footers.value!!
+                .first { it.name == vm.selectedFooter.value }
+            val baseBmp   = withContext(Dispatchers.IO) {
                 URL(item.build["footer"]!!).downloadBitmap()
             }
-            val team1   = vm.teams.value!!.first { it.name == vm.selectedTeam1.value }
-            val team2   = vm.teams.value!!.first { it.name == vm.selectedTeam2.value }
-            val logo1   = withContext(Dispatchers.IO) { URL(team1.logoUrl!!).downloadBitmap() }
-            val logo2   = withContext(Dispatchers.IO) { URL(team2.logoUrl!!).downloadBitmap() }
+            val team1     = vm.teams.value!!
+                .first { it.name == vm.selectedTeam1.value }
+            val team2     = vm.teams.value!!
+                .first { it.name == vm.selectedTeam2.value }
+            val logo1     = withContext(Dispatchers.IO) {
+                URL(team1.logoUrl!!).downloadBitmap()
+            }
+            val logo2     = withContext(Dispatchers.IO) {
+                URL(team2.logoUrl!!).downloadBitmap()
+            }
             val footerTxt = vm.selectedFooterLabel.value.orEmpty()
-            val sc1     = vm.score1.value ?: 0
-            val sc2     = vm.score2.value ?: 0
+            val sc1       = vm.score1.value ?: 0
+            val sc2       = vm.score2.value ?: 0
 
-            // 2) En UI, actualizar el filtro directamente sobre el bitmap recién compuesto
+            // 2) Guardar para futuros reattach/update
+            baseFooterBmp  = baseBmp
+            logo1FooterBmp = logo1
+            logo2FooterBmp = logo2
+
+            // 3) En UI, actualizar el filtro directamente sobre el bitmap recién compuesto
             withContext(Dispatchers.Main) {
                 FooterOverlayGenerator.updateOverlay(
                     base       = baseBmp,
@@ -925,6 +975,26 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
         }
     }
 
+    private fun reattachFooterFilter() {
+        baseFooterBmp?.let { base ->
+            FooterOverlayGenerator.updateOverlay(
+                base       = base,
+                logo1      = logo1FooterBmp,
+                logo2      = logo2FooterBmp,
+                teamName1  = vm.teams.value!!.first { it.name == vm.selectedTeam1.value }.name,
+                teamName2  = vm.teams.value!!.first { it.name == vm.selectedTeam2.value }.name,
+                footerText = vm.selectedFooterLabel.value.orEmpty(),
+                score1     = vm.score1.value ?: 0,
+                score2     = vm.score2.value ?: 0,
+                filter     = footerFilter
+            )
+            applyFooterScaleAndPosition(base)
+            if (!isFooterAttached) {
+                genericStream.getGlInterface().addFilter(footerFilter)
+                isFooterAttached = true
+            }
+        }
+    }
 
     private fun applyFooterScaleAndPosition(bmp: Bitmap) {
         val metrics = resources.displayMetrics

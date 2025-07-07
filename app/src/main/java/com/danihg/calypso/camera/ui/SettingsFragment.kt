@@ -803,16 +803,19 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
             overlaysVm.setLineupEnabled(false)
             overlaysVm.setCoverEnabled(false)
             overlaysVm.setFooterEnabled(false)
-            if (genericStream.isStreaming || genericStream.isRecording) {
-                parentFragmentManager.beginTransaction()
-                    .replace(R.id.settings_container, ActiveStreamSettingsFragment())
-                    .addToBackStack(null)
-                    .commit()
-            } else {
-                parentFragmentManager.beginTransaction()
-                    .replace(R.id.settings_container, StreamSettingsFragment())
-                    .addToBackStack(null)
-                    .commit()
+            waitForFilterRemoval(0) {
+                // 5) Y entonces navegamos
+                if (genericStream.isStreaming || genericStream.isRecording) {
+                    parentFragmentManager.beginTransaction()
+                        .replace(R.id.settings_container, ActiveStreamSettingsFragment())
+                        .addToBackStack(null)
+                        .commit()
+                } else {
+                    parentFragmentManager.beginTransaction()
+                        .replace(R.id.settings_container, StreamSettingsFragment())
+                        .addToBackStack(null)
+                        .commit()
+                }
             }
             requireActivity()
                 .findViewById<FrameLayout>(R.id.overlays_container)
@@ -1611,5 +1614,20 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                 zoomHandler.postDelayed(this, 50)
             }
         }
+    }
+
+    private fun waitForFilterRemoval(targetCount: Int, onDone: () -> Unit) {
+        val handler = Handler(Looper.getMainLooper())
+        handler.post(object : Runnable {
+            override fun run() {
+                val current = genericStream.getGlInterface().filtersCount()
+                Log.d("SettingsFragment", "Waiting removal: current filtersCount=$current, target=$targetCount")
+                if (current <= targetCount) {
+                    onDone()
+                } else {
+                    handler.postDelayed(this, 50L)  // chequea de nuevo en el siguiente frame (~60fps)
+                }
+            }
+        })
     }
 }
