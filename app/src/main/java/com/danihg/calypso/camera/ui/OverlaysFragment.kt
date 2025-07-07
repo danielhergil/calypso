@@ -34,6 +34,10 @@ import java.net.URL
 
 class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
 
+    companion object {
+        private const val TAG = "OverlaysFragment"
+    }
+
     private val cameraViewModel: CameraViewModel by activityViewModels()
     private val vm: OverlaysSettingsViewModel by activityViewModels()
     private val genericStream get() = cameraViewModel.genericStream
@@ -235,6 +239,7 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
         }
 
         vm.coverEnabled.observe(viewLifecycleOwner) { enabled ->
+            Log.d(TAG, "coverEnabled changed → enabled=$enabled, isCoverAttached=$isCoverAttached")
             btnCoverOverlay.isChecked = enabled
             val bg = if (enabled)
                 ContextCompat.getColor(requireContext(), R.color.calypso_red)
@@ -244,10 +249,13 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
                 ColorStateList.valueOf(if (enabled) Color.BLACK else Color.WHITE)
 
             if (enabled) {
+                Log.d(TAG, "→ attaching cover overlay")
                 attachCoverOverlay()
             } else if (isCoverAttached) {
+                Log.d("OverlaysFragment", "detaching cover overlay")
                 genericStream.getGlInterface().removeFilter(coverFilter)
                 isCoverAttached = false
+                Log.d(TAG, "→ Detached cover overlay, isCoverAttached=$isCoverAttached")
             }
         }
 
@@ -279,6 +287,7 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
         }
 
         btnCoverOverlay.setOnClickListener {
+            Log.d(TAG, "btnCoverOverlay clicked → currentEnabled=${vm.coverEnabled.value}")
             // deshabilita todos mientras animación
             btnScoreboardOverlay.isEnabled = false
             btnLineupOverlay.isEnabled     = false
@@ -302,6 +311,7 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
 
             // cambia estado en el ViewModel
             vm.setCoverEnabled(!(vm.coverEnabled.value ?: false))
+            Log.d(TAG, "  new coverEnabled=${! (vm.coverEnabled.value ?: false)}")
 
             // tras 3s, restaurar visibilidad e íconos
             viewLifecycleOwner.lifecycleScope.launch {
@@ -592,6 +602,10 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
             isScoreboardAttached = false
             reattachFilter()
         }
+        if (vm.lineupEnabled.value == true && compositeLineupBmp != null) {
+            isLineupAttached = false
+            reattachLineupFilter()
+        }
     }
 
     private fun reattachFilter() {
@@ -646,6 +660,7 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
             applyScaleAndPosition(bmpSnapshot)
             genericStream.getGlInterface().addFilter(scoreboardFilter)
             isScoreboardAttached = true
+            Log.d(TAG, "filters count: " + genericStream.getGlInterface().filtersCount())
 
             // 3) Descarga logos en paralelo
             val team1 = vm.teams.value
@@ -811,6 +826,7 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
             lineupFilter.setScale(scaleX, scaleY)
             lineupFilter.setPosition(posX, posY)
             genericStream.getGlInterface().addFilter(lineupFilter)
+            Log.d(TAG, "filters count: " + genericStream.getGlInterface().filtersCount())
             isLineupAttached = true
         }
     }
@@ -836,13 +852,16 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
             if (!isLineupAttached) {
                 genericStream.getGlInterface().addFilter(lineupFilter)
                 isLineupAttached = true
+                Log.d(TAG, "filters count: " + genericStream.getGlInterface().filtersCount())
             }
         }
     }
 
     private fun attachCoverOverlay() {
+        Log.d(TAG, "attachCoverOverlay() start")
         lifecycleScope.launch {
             val item = vm.covers.value!!.first { it.name == vm.selectedCover.value }
+            Log.d(TAG, "  selectedCover item = ${item.id} / ${item.build["cover"]}")
             val baseBmp = withContext(Dispatchers.IO) { URL(item.build["cover"]!!).downloadBitmap() }
             val team1   = vm.teams.value!!.first { it.name == vm.selectedTeam1.value }
             val team2   = vm.teams.value!!.first { it.name == vm.selectedTeam2.value }
@@ -858,13 +877,18 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
                 teamName1 = team1.name,
                 teamName2 = team2.name
             )
+            Log.d(TAG, "  created composite bmp size: ${composite.width}×${composite.height}")
 
             // 2) En UI: setImage, escala y addFilter
             withContext(Dispatchers.Main) {
+                Log.d(TAG, "  setting image & scale/position")
                 coverFilter.setImage(composite)
                 applyCoverScaleAndPosition(composite)
+                Log.d(TAG, "  adding filter to GL interface")
                 genericStream.getGlInterface().addFilter(coverFilter)
                 isCoverAttached = true
+                Log.d(TAG, "  coverFilter added, isCoverAttached=$isCoverAttached")
+                Log.d(TAG, "filters count: " + genericStream.getGlInterface().filtersCount())
             }
         }
     }
@@ -920,6 +944,7 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
                 )
                 applyFooterScaleAndPosition(baseBmp)
                 genericStream.getGlInterface().addFilter(footerFilter)
+                Log.d(TAG, "filters count: " + genericStream.getGlInterface().filtersCount())
                 isFooterAttached = true
             }
         }

@@ -728,6 +728,7 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         // 4) Listeners de clic “Settings” (igual que antes)
         // —————————————————————————
         btnSettings.setOnClickListener {
+            Log.d("SettingsFragment", "btn Settings filters count: " + genericStream.getGlInterface().filtersCount())
             val anyVisible =
                 (!btnCameraManual.isGone
                         || !btnCameraAuto.isGone
@@ -803,16 +804,19 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
             overlaysVm.setLineupEnabled(false)
             overlaysVm.setCoverEnabled(false)
             overlaysVm.setFooterEnabled(false)
-            if (genericStream.isStreaming || genericStream.isRecording) {
-                parentFragmentManager.beginTransaction()
-                    .replace(R.id.settings_container, ActiveStreamSettingsFragment())
-                    .addToBackStack(null)
-                    .commit()
-            } else {
-                parentFragmentManager.beginTransaction()
-                    .replace(R.id.settings_container, StreamSettingsFragment())
-                    .addToBackStack(null)
-                    .commit()
+            waitForFilterRemoval(0) {
+                // 5) Y entonces navegamos
+                if (genericStream.isStreaming || genericStream.isRecording) {
+                    parentFragmentManager.beginTransaction()
+                        .replace(R.id.settings_container, ActiveStreamSettingsFragment())
+                        .addToBackStack(null)
+                        .commit()
+                } else {
+                    parentFragmentManager.beginTransaction()
+                        .replace(R.id.settings_container, StreamSettingsFragment())
+                        .addToBackStack(null)
+                        .commit()
+                }
             }
             requireActivity()
                 .findViewById<FrameLayout>(R.id.overlays_container)
@@ -1123,25 +1127,40 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
 
     override fun onResume() {
         super.onResume()
-        prevScoreboardEnabled?.let { wasEnabled ->
-            if (wasEnabled) overlaysVm.setScoreboardEnabled(true)
-            prevScoreboardEnabled = null
+
+        // Lista de pares (flag, acción)
+        val actions = listOf(
+            prevScoreboardEnabled to { overlaysVm.setScoreboardEnabled(true) },
+            prevLineupEnabled     to { overlaysVm.setLineupEnabled(true)   },
+            prevCoverEnabled      to { overlaysVm.setCoverEnabled(true)    },
+            prevFooterEnabled     to { overlaysVm.setFooterEnabled(true)   }
+        )
+
+        val handler = Handler(Looper.getMainLooper())
+        var delayMs = 0L
+
+        actions.forEach { (wasEnabled, action) ->
+            if (wasEnabled == true) {
+                handler.postDelayed({
+                    action()
+                }, delayMs)
+                delayMs += 4_000L  // sumamos 5s para la siguiente
+            }
         }
-        prevLineupEnabled?.let { wasEnabled ->
-            if (wasEnabled) overlaysVm.setLineupEnabled(true)
-            prevLineupEnabled = null
-        }
-        prevCoverEnabled?.let { wasEnabled ->
-            if (wasEnabled) overlaysVm.setCoverEnabled(true)
-            prevCoverEnabled = null
-        }
-        prevFooterEnabled?.let { wasEnabled ->
-            if (wasEnabled) overlaysVm.setFooterEnabled(true)
-            prevFooterEnabled = null
-        }
+
+        // Limpiamos los flags inmediatamente
+        prevScoreboardEnabled = null
+        prevLineupEnabled     = null
+        prevCoverEnabled      = null
+        prevFooterEnabled     = null
+
+        // Como el contenedor debe mostrarse de inmediato, lo dejamos sin retardo
         requireActivity()
             .findViewById<FrameLayout>(R.id.overlays_container)
             .visibility = View.VISIBLE
+
+        // Y mantenemos el restoreUIState() al final; si quieres que corra tras el último overlay,
+        // podrías programarlo con otro postDelayed(handler, delayMs) aquí.
         restoreUIState()
     }
 
@@ -1612,4 +1631,20 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
             }
         }
     }
+
+    private fun waitForFilterRemoval(targetCount: Int, onDone: () -> Unit) {
+        val handler = Handler(Looper.getMainLooper())
+        handler.post(object : Runnable {
+            override fun run() {
+                val current = genericStream.getGlInterface().filtersCount()
+                Log.d("SettingsFragment", "Waiting removal: current filtersCount=$current, target=$targetCount")
+                if (current <= targetCount) {
+                    onDone()
+                } else {
+                    handler.postDelayed(this, 50L)  // chequea de nuevo en el siguiente frame (~60fps)
+                }
+            }
+        })
+    }
+
 }
