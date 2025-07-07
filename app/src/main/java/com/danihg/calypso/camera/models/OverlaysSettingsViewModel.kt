@@ -1,6 +1,7 @@
 // OverlaysSettingsViewModel.kt
 package com.danihg.calypso.camera.models
 
+import android.os.Looper
 import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -367,6 +368,16 @@ class OverlaysSettingsViewModel(
     }
     fun setScoreboardEnabled(enabled: Boolean) {
         savedStateHandle[KEY_SCOREBOARD_ENABLED] = enabled
+
+        // Luego forzamos la emisión inmediata si estamos en el main-thread
+        val live = scoreboardEnabled
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            // setValue() emite instantáneamente
+            (live as MutableLiveData).value = enabled
+        } else {
+            // si no, caemos en postValue() (seguirá funcionando correctamente)
+            live.postValue(enabled)
+        }
     }
     fun setScore1(value: Int) {
         savedStateHandle[KEY_SCORE1] = value

@@ -77,6 +77,15 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
     private lateinit var submenuOverlays: LinearLayout
     private lateinit var btnOverlaysToggle: MaterialButton
 
+    private fun logSB(step: String) {
+        Log.d(
+            "SB",
+            "${System.currentTimeMillis() % 100_000} | $step" +
+                    " | enabled=${vm.scoreboardEnabled.value}" +
+                    " | attached=$isScoreboardAttached"
+        )
+    }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         btnScoreboardOverlay = view.findViewById(R.id.btnScoreboardOverlay)
@@ -147,9 +156,9 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
                 if (enabled) Color.BLACK else Color.WHITE
             )
 
-            if (enabled) {
+            if (enabled && !isFooterAttached) {
                 attachFooterOverlay()
-            } else if (isFooterAttached) {
+            } else if (!enabled && isFooterAttached) {
                 genericStream.getGlInterface().removeFilter(footerFilter)
                 isFooterAttached = false
             }
@@ -235,6 +244,7 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
         }
 
         vm.coverEnabled.observe(viewLifecycleOwner) { enabled ->
+            logSB("OBSERVE  enabled=$enabled")
             btnCoverOverlay.isChecked = enabled
             val bg = if (enabled)
                 ContextCompat.getColor(requireContext(), R.color.calypso_red)
@@ -243,11 +253,14 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
             btnCoverOverlay.iconTint =
                 ColorStateList.valueOf(if (enabled) Color.BLACK else Color.WHITE)
 
-            if (enabled) {
+            if (enabled && !isCoverAttached) {
+                logSB("» attachCoverOverlay()")
                 attachCoverOverlay()
-            } else if (isCoverAttached) {
+            } else if (isCoverAttached && isCoverAttached) {
+                logSB("» removeFilter() coverFilter")
                 genericStream.getGlInterface().removeFilter(coverFilter)
                 isCoverAttached = false
+                logSB("« removeFilter() coverFilter done")
             }
         }
 
@@ -267,11 +280,11 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
             btnLineupOverlay.iconTint =
                 ColorStateList.valueOf(if (enabled) Color.BLACK else Color.WHITE)
 
-            if (enabled) {
+            if (enabled && !isLineupAttached) {
                 // si ya tenemos el composite, hacemos re‐attach, si no, attach nuevo
                 if (compositeLineupBmp != null) reattachLineupFilter()
                 else attachLineupOverlay()
-            } else if (isLineupAttached) {
+            } else if (!enabled && isLineupAttached) {
                 // solo quitamos si antes lo añadimos
                 genericStream.getGlInterface().removeFilter(lineupFilter)
                 isLineupAttached = false
@@ -416,6 +429,7 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
 
         // 2) Estado checked + aplicar/quitar filtro
         vm.scoreboardEnabled.observe(viewLifecycleOwner) { enabled ->
+            logSB("OBSERVE  enabled=$enabled  (snapshot=${snapshotBmp!=null})")
             btnScoreboardOverlay.isChecked = enabled
             val bgColor = if (enabled)
                 ContextCompat.getColor(requireContext(), R.color.calypso_red)
@@ -431,14 +445,19 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
             btnInc2.visibility = if (enabled) View.VISIBLE else View.GONE
             btnDec2.visibility = if (enabled) View.VISIBLE else View.GONE
 
-            if (enabled) {
-                if (snapshotBmp != null) reattachFilter()
-                else attachSnapshotOverlay()
-            } else {
-                if (isScoreboardAttached) {
-                    genericStream.getGlInterface().removeFilter(scoreboardFilter)
-                    isScoreboardAttached = false
+            if (enabled && !isScoreboardAttached) {
+                if (snapshotBmp != null) {
+                    logSB("» reattachFilter()")
+                    reattachFilter()
+                } else {
+                    logSB("» attachSnapshotOverlay()")
+                    attachSnapshotOverlay()
                 }
+            } else if (!enabled && isScoreboardAttached) {
+                logSB("» removeFilter()")
+                genericStream.getGlInterface().removeFilter(scoreboardFilter)
+                isScoreboardAttached = false
+                logSB("« removeFilter() done")
             }
         }
 
@@ -540,8 +559,10 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
         btnOverlaysMenu.setOnClickListener {
             snapshotBmp = null
             if (vm.scoreboardEnabled.value == true && isScoreboardAttached) {
+                logSB("removeFilter scoreboardEnabled (motivo btnOverlaysMenu)")
                 genericStream.getGlInterface().removeFilter(scoreboardFilter)
                 isScoreboardAttached = false
+                logSB("removeFilter OK  attached=$isScoreboardAttached")
             }
             // idem con Lineup
             if (vm.lineupEnabled.value == true && isLineupAttached) {
@@ -588,13 +609,24 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
 
     override fun onResume() {
         super.onResume()
-        if (vm.scoreboardEnabled.value == true && snapshotBmp != null) {
-            isScoreboardAttached = false
+        logSB("onResume()")
+        if (vm.scoreboardEnabled.value == true && snapshotBmp != null && !isScoreboardAttached) {
+            logSB("onResume → reattachFilter()")
             reattachFilter()
+        }
+        if (vm.lineupEnabled.value == true && compositeLineupBmp != null && !isLineupAttached) {
+            reattachLineupFilter()
+        }
+        if (vm.coverEnabled.value == true && !isCoverAttached) {
+            attachCoverOverlay()
+        }
+        if (vm.footerEnabled.value == true && !isFooterAttached) {
+            attachFooterOverlay()
         }
     }
 
     private fun reattachFilter() {
+        logSB("reattachFilter() IN")
         ScoreboardOverlayGenerator.updateOverlay(
             snapshot = snapshotBmp,
             logo1    = logo1Bmp,
@@ -612,12 +644,15 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
         )
         applyScaleAndPosition(snapshotBmp!!)
         if (!isScoreboardAttached) {
+            logSB("addFilter (reattach)")
             genericStream.getGlInterface().addFilter(scoreboardFilter)
             isScoreboardAttached = true
+            logSB("addFilter OK  attached=$isScoreboardAttached")
         }
     }
 
     private fun attachSnapshotOverlay() {
+        logSB("attachSnapshotOverlay() IN")
         lifecycleScope.launch {
             val item = vm.scoreboards.value
                 ?.firstOrNull { it.name == vm.selectedScoreboard.value }
@@ -644,8 +679,12 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
                 showLogos = vm.showLogos.value ?: true
             )
             applyScaleAndPosition(bmpSnapshot)
-            genericStream.getGlInterface().addFilter(scoreboardFilter)
-            isScoreboardAttached = true
+            if (!isScoreboardAttached) {
+                logSB("addFilter (snapshot)")
+                genericStream.getGlInterface().addFilter(scoreboardFilter)
+                isScoreboardAttached = true
+                logSB("addFilter OK  attached=$isScoreboardAttached")
+            }
 
             // 3) Descarga logos en paralelo
             val team1 = vm.teams.value
@@ -810,8 +849,10 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
             val posY = (100f - scaleY) / 5f
             lineupFilter.setScale(scaleX, scaleY)
             lineupFilter.setPosition(posX, posY)
-            genericStream.getGlInterface().addFilter(lineupFilter)
-            isLineupAttached = true
+            if (!isLineupAttached) {
+                genericStream.getGlInterface().addFilter(lineupFilter)
+                isLineupAttached = true
+            }
         }
     }
 
@@ -863,8 +904,10 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
             withContext(Dispatchers.Main) {
                 coverFilter.setImage(composite)
                 applyCoverScaleAndPosition(composite)
-                genericStream.getGlInterface().addFilter(coverFilter)
-                isCoverAttached = true
+                if (!isCoverAttached) {
+                    genericStream.getGlInterface().addFilter(coverFilter)
+                    isCoverAttached = true
+                }
             }
         }
     }
@@ -919,8 +962,10 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
                     filter     = footerFilter
                 )
                 applyFooterScaleAndPosition(baseBmp)
-                genericStream.getGlInterface().addFilter(footerFilter)
-                isFooterAttached = true
+                if (!isFooterAttached) {
+                    genericStream.getGlInterface().addFilter(footerFilter)
+                    isFooterAttached = true
+                }
             }
         }
     }
@@ -985,4 +1030,28 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
             vm.setFooterEnabled(false)
         }
     }
+
+    /**
+     * Llama a esto siempre que recuperes la visibilidad de tu contenedor,
+     * o en onResume() si tu fragment está en un ViewPager o está siendo mostrado de nuevo.
+     */
+    fun restoreAllOverlays() {
+        if (vm.scoreboardEnabled.value == true) {
+            if (!isScoreboardAttached) {
+                if (snapshotBmp != null) reattachFilter()
+                else                attachSnapshotOverlay()
+            }
+        }
+        if (vm.lineupEnabled.value == true && !isLineupAttached) {
+            if (compositeLineupBmp != null) reattachLineupFilter()
+            else                            attachLineupOverlay()
+        }
+        if (vm.coverEnabled.value == true && !isCoverAttached) {
+            attachCoverOverlay()
+        }
+        if (vm.footerEnabled.value == true && !isFooterAttached) {
+            attachFooterOverlay()
+        }
+    }
+
 }
