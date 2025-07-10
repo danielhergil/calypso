@@ -603,6 +603,18 @@ class OverlaysFragment : Fragment(R.layout.fragment_overlays) {
             isScoreboardAttached = false
             reattachFilter()
         }
+        if (vm.lineupEnabled.value == true && compositeLineupBmp != null) {
+            isLineupAttached = false
+            reattachLineupFilter()
+        }
+        if (vm.coverEnabled.value == true && baseCoverBmp != null) {
+            isCoverAttached = false
+            reattachCoverFilter()
+        }
+        if (vm.footerEnabled.value == true && compositeFooterBmp != null) {
+            isFooterAttached = false
+            reattachFooterFilter()
+        }
     }
 
     private fun reattachFilter() {

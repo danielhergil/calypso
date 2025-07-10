@@ -40,7 +40,6 @@ import com.danihg.calypso.services.CameraService
 import com.danihg.calypso.utils.storage.StorageUtils
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.snackbar.Snackbar
-import com.pedro.encoder.input.gl.render.filters.`object`.GifObjectFilterRender
 import com.pedro.encoder.input.sources.audio.MicrophoneSource
 import com.pedro.encoder.input.sources.video.VideoFileSource
 import java.io.File
@@ -117,8 +116,14 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
     private lateinit var spinnerReplay2: ProgressBar
     private lateinit var spinnerReplay3: ProgressBar
 
-    private val replayTransition by lazy { GifObjectFilterRender() }
-
+    // para guardar el estado de la cámara antes de la secuencia
+    private var savedSource: CameraCalypsoSource? = null
+    private var savedZoom: Float?               = null
+    private var savedEvIndex: Int?              = null
+    private var savedIsoProg: Int               = -1
+    private var savedWbProg: Int                = -1
+    private var savedEtProg: Int                = -1
+    private var wasManualMode: Boolean?         = null
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -315,6 +320,7 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
 
                         // ① Guardamos referencias antes de cambiar de source
                         val oldSource    = genericStream.videoSource as? CameraCalypsoSource
+                        val oldAudio     = genericStream.audioSource
                         val savedZoom    = oldSource?.getZoom()
                         val savedEvIndex = oldSource?.getExposureCompensation()
                         val savedIsoProg = settingsVm.isoSeekProgress.value ?: -1
@@ -339,7 +345,6 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
 
                                 // Función para restaurar cámara y ajustes
                                 fun restoreCamera() {
-                                    genericStream.getGlInterface().removeFilter(replayTransition)
                                     genericStream.changeVideoSource(oldSource)
                                     cameraControls?.startReplay()
                                     cameraControls?.syncButtonStates()
@@ -364,8 +369,6 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                                         }
                                     }, 100)
                                 }
-
-
 
                                 overlaysVm.setScoreboardEnabled(false)
                                 overlaysVm.setLineupEnabled(false)
@@ -399,9 +402,9 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                                                             replayButtons.forEach  { it.visibility = View.VISIBLE }
                                                             restoreCamera()
                                                             if (prevScore) overlaysVm.setScoreboardEnabled(true)
-                                                            if (prevLine ) overlaysVm.setLineupEnabled(true)
+                                                            if (prevLine) overlaysVm.setLineupEnabled(true)
                                                             if (prevCover) overlaysVm.setCoverEnabled(true)
-                                                            if (prevFoot ) overlaysVm.setFooterEnabled(true)
+                                                            if (prevFoot) overlaysVm.setFooterEnabled(true)
                                                         }
                                                     }
                                                 ))
@@ -440,14 +443,19 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                                         }
                                         // Nueva sesión y arranque manual
 //                                        StorageUtils.generateSessionId()
-                                        Intent(requireContext(), CameraService::class.java).apply {
-                                            action = ACTION_START_RECORD
-                                            putExtra(EXTRA_PATH, StorageUtils.getTempRecordFile().absolutePath)
-                                        }.also { ctxIntent ->
-                                            ContextCompat.startForegroundService(requireContext(), ctxIntent)
-                                        }
+                                        Handler(Looper.getMainLooper()).postDelayed({
+                                            Intent(requireContext(), CameraService::class.java).apply {
+                                                action = ACTION_START_RECORD
+                                                putExtra(EXTRA_PATH, StorageUtils.getTempRecordFile().absolutePath)
+                                            }.also { ContextCompat.startForegroundService(requireContext(), it) }
+                                        }, 5000)
                                     }, 100)
                                 }
+
+                                overlaysVm.setScoreboardEnabled(false)
+                                overlaysVm.setLineupEnabled(false)
+                                overlaysVm.setCoverEnabled(false)
+                                overlaysVm.setFooterEnabled(false)
 
                                 // A) Transición de entrada
                                 genericStream.changeVideoSource(VideoFileSource(
@@ -601,11 +609,13 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
             overlaysVm.setCoverEnabled(false)
             overlaysVm.setFooterEnabled(false)
 
-            // 3) Navega al ReplaysFragment
-            parentFragmentManager.beginTransaction()
-                .replace(R.id.settings_container, ReplaysFragment())
-                .addToBackStack(null)
-                .commit()
+            waitForFilterRemoval(0) {
+                // 3) Navega al ReplaysFragment
+                parentFragmentManager.beginTransaction()
+                    .replace(R.id.settings_container, ReplaysFragment())
+                    .addToBackStack(null)
+                    .commit()
+            }
 
             // 4) Oculta el contenedor de overlays
             requireActivity()
@@ -1614,6 +1624,145 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                 zoomHandler.postDelayed(this, 50)
             }
         }
+    }
+
+    // ① Método público que llama ReplaysFragment
+    fun playClipsSequentially(files: List<File>) {
+        Log.d("SettingsFragment", "playClipsSequentially llamado con: $files")
+
+        // bloquea los botones de replay y muestra los spinners
+        val replayButtons  = listOf(btnReplayOption1, btnReplayOption2, btnReplayOption3)
+        val replaySpinners = listOf(spinnerReplay1,   spinnerReplay2,   spinnerReplay3)
+
+        replayButtons.forEach  { it.visibility = View.INVISIBLE }
+        replaySpinners.forEach { it.visibility = View.VISIBLE }
+
+        // — 1) Guardar estado de cámara
+        val old = genericStream.videoSource as? CameraCalypsoSource
+        savedSource   = old
+        savedZoom     = old?.getZoom()
+        savedEvIndex  = old?.getExposureCompensation()
+        savedIsoProg  = settingsVm.isoSeekProgress.value ?: -1
+        savedWbProg   = settingsVm.wbSeekProgress.value ?: -1
+        savedEtProg   = settingsVm.etSeekProgress.value ?: -1
+        wasManualMode = settingsVm.isManualMode.value
+
+        // guarda estados previos de overlays
+        prevScoreboardEnabled = overlaysVm.scoreboardEnabled.value ?: false
+        prevLineupEnabled     = overlaysVm.lineupEnabled.value    ?: false
+        prevCoverEnabled      = overlaysVm.coverEnabled.value     ?: false
+        prevFooterEnabled     = overlaysVm.footerEnabled.value    ?: false
+
+        // desactiva todos
+        overlaysVm.setScoreboardEnabled(false)
+        overlaysVm.setLineupEnabled(false)
+        overlaysVm.setCoverEnabled(false)
+        overlaysVm.setFooterEnabled(false)
+
+        // URIs de transición
+        val inUri  = "android.resource://${requireContext().packageName}/${R.raw.vid_replay_in}".toUri()
+        val outUri = "android.resource://${requireContext().packageName}/${R.raw.vid_replay_out}".toUri()
+
+        // 1) transición de entrada (callback en el constructor)
+        genericStream.changeVideoSource(VideoFileSource(
+            context  = requireContext(),
+            path     = inUri,
+            loopMode = false,
+            onFinish = {
+                // al terminar la entrada, arrancamos la cadena
+                playOneByOne(files, 0, outUri)
+            }
+        ))
+    }
+
+    // ② Helper recursivo que reproduce cada clip y avanza al siguiente
+    private fun playOneByOne(files: List<File>, index: Int, outUri: Uri) {
+        if (index >= files.size) {
+            // terminados todos, lanzamos transición de salida
+            genericStream.changeVideoSource(VideoFileSource(
+                context  = requireContext(),
+                path     = outUri,
+                loopMode = false,
+                onFinish = {
+                    Handler(Looper.getMainLooper()).post {
+                        // — ahora RESTAURAMOS la cámara **exactamente** como estaba
+                        savedSource?.let { src ->
+                            genericStream.changeVideoSource(src)
+                            // zoom + EV
+                            savedZoom?.let { src.setZoom(it) }
+                            savedEvIndex?.let { src.setExposureCompensation(it) }
+                            // ISO
+                            if (savedIsoProg < 0) src.enableAutoISO()
+                            else {
+                                val minIso = src.getMinISO()
+                                src.setISO(
+                                    (minIso + savedIsoProg * 100).coerceIn(
+                                        minIso,
+                                        src.getMaxISO()
+                                    )
+                                )
+                            }
+                            // WB
+                            val awbModes = src.getAutoWhiteBalanceModesAvailable()
+                            if (savedWbProg < 0) {
+                                src.enableAutoWhiteBalance(CameraCharacteristics.CONTROL_AWB_MODE_AUTO)
+                            } else if (savedWbProg in awbModes.indices) {
+                                src.enableAutoWhiteBalance(awbModes[savedWbProg])
+                            }
+                            // ET
+                            val denoms = arrayOf(30, 40, 50, 60, 100, 120, 250, 500)
+                            if (savedEtProg in denoms.indices) {
+                                src.setExposureTime(1_000_000_000L / denoms[savedEtProg])
+                            }
+                            // si antes NO estaba en manual, forzamos auto en todo
+                            if (wasManualMode == false) {
+                                src.enableAutoExposure()
+                                src.enableAutoISO()
+                                src.enableAutoWhiteBalance(CameraCharacteristics.CONTROL_AWB_MODE_AUTO)
+                                src.enableAutoFocus()
+                            }
+                        }
+                        // — finalmente restauramos los overlays
+                        listOf(spinnerReplay1, spinnerReplay2, spinnerReplay3)
+                            .forEach { it.visibility = View.GONE }
+                        listOf(btnReplayOption1, btnReplayOption2, btnReplayOption3)
+                            .forEach { it.visibility = View.VISIBLE }
+                        restoreOverlays()
+                    }
+                }
+            ))
+            return
+        }
+
+        // reproducir el clip actual con su callback
+        val clipUri = files[index].toUri()
+        genericStream.changeVideoSource(VideoFileSource(
+            context  = requireContext(),
+            path     = clipUri,
+            loopMode = false,
+            onFinish = {
+                // al acabar este, reproduzco el siguiente
+                playOneByOne(files, index + 1, outUri)
+            }
+        ))
+    }
+
+    // ③ Devuelve los overlays a su estado original
+    private fun restoreOverlays() {
+        Log.d("SB", "RESTORE setScoreboardEnabled(true)")
+        prevScoreboardEnabled?.let { overlaysVm.setScoreboardEnabled(it) }
+        prevLineupEnabled    ?.let { overlaysVm.setLineupEnabled(it) }
+        prevCoverEnabled     ?.let { overlaysVm.setCoverEnabled(it) }
+        prevFooterEnabled    ?.let { overlaysVm.setFooterEnabled(it) }
+
+        requireActivity()
+            .findViewById<FrameLayout>(R.id.overlays_container)
+            .visibility = View.VISIBLE
+
+        prevScoreboardEnabled = null
+        prevLineupEnabled     = null
+        prevCoverEnabled      = null
+        prevFooterEnabled     = null
     }
 
     private fun waitForFilterRemoval(targetCount: Int, onDone: () -> Unit) {
